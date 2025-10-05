@@ -1,29 +1,23 @@
 # -----------------------------------------------------------------------------
 # Site settings
 # -----------------------------------------------------------------------------
-# Site
 title: "Nelu Radpour"
 description: "PhD Candidate | Psycholinguistics & Cognitive Neuroscience"
 url: "https://nelurad.github.io"
-baseurl: ""  
+baseurl: ""  # keep empty for user/organization sites
 
-# Author / profile
 author:
   name: "Nelu D. Radpour"
   bio: "I study how we think!"
   location: "City, Country"
   email: "radpour@psy.fsu.edu"
   github: "nelurad"
-  linkedin: "your-linkedin-slug"
-  scholar: "your-scholar-id"    # optional
-  orcid: "0000-0002-xxxx-xxxx"  # optional
-# Minimal essentials for al-folio to deploy
-title: "Nelu Radpour"              # quote if it might contain a colon
-url: "https://nelurad.github.io"
-baseurl: ""                   # empty for user/organization sites
+  linkedin: "your-linkedin-slug"  # e.g., nelu-radpour (not the full URL)
+  scholar: "your-scholar-id"      # optional; leave blank if unsure
+  orcid: "0000-0002-xxxx-xxxx"    # optional; leave blank if unsure
+
 last_updated: false
 back_to_top: true
-
 # -----------------------------------------------------------------------------
 # Theme
 # -----------------------------------------------------------------------------
