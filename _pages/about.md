@@ -1,6 +1,6 @@
 ---
 layout: about
-title: about
+title: Nelu Radpour 
 permalink: /
 subtitle: <a href='#'>Affiliations</a>. Address. Contacts. Motto. Etc.
 
