@@ -2,7 +2,7 @@
 layout: about
 title: about
 permalink: /
-subtitle: PhD Candidate, Cognition and Cognitive Neuroscience
+subtitle: PhD Candidate | Cognition and Cognitive Neuroscience
 
 profile:
   align: right
