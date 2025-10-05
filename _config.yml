@@ -3,7 +3,7 @@
 # -----------------------------------------------------------------------------
 
 # Minimal essentials for al-folio to deploy
-title: "nelurad"              # quote if it might contain a colon
+title: "Nelu Radpour"              # quote if it might contain a colon
 url: "https://nelurad.github.io"
 baseurl: ""                   # empty for user/organization sites
 last_updated: false
