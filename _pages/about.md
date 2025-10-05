@@ -2,7 +2,7 @@
 layout: about
 title: about
 permalink: /
-subtitle: <a href='https://www.fsu.edu/'>Florida State University</a>. Address. Contacts. Motto. Etc.
+subtitle:[Florida State University](https://www.fsu.edu/)
 
 profile:
   align: right
