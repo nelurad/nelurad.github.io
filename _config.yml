@@ -1,7 +1,22 @@
 # -----------------------------------------------------------------------------
 # Site settings
 # -----------------------------------------------------------------------------
+# Site
+title: "Nelu Radpour"
+description: "PhD Candidate | Cognitive Neuroscience"
+url: "https://nelurad.github.io"
+baseurl: ""   # leave blank for personal sites
 
+# Author / profile
+author:
+  name: "Nelu D. Radpour"
+  bio: "I study [short bio here]."
+  location: "City, Country"
+  email: "you@school.edu"
+  github: "nelurad"
+  linkedin: "your-linkedin-slug"
+  scholar: "your-scholar-id"    # optional
+  orcid: "0000-0002-xxxx-xxxx"  # optional
 # Minimal essentials for al-folio to deploy
 title: "Nelu Radpour"              # quote if it might contain a colon
 url: "https://nelurad.github.io"
