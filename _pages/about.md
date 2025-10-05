@@ -2,7 +2,7 @@
 layout: about
 title: about
 permalink: /
-subtitle:[Florida State University](https://www.fsu.edu/)
+subtitle:PhD Candidate, Cognition and Cognitive Neuroscience
 
 profile:
   align: right
