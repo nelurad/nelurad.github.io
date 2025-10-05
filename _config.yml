@@ -3,16 +3,16 @@
 # -----------------------------------------------------------------------------
 # Site
 title: "Nelu Radpour"
-description: "PhD Candidate | Cognitive Neuroscience"
+description: "PhD Candidate | Psycholinguistics & Cognitive Neuroscience"
 url: "https://nelurad.github.io"
-baseurl: ""   # leave blank for personal sites
+baseurl: ""  
 
 # Author / profile
 author:
   name: "Nelu D. Radpour"
-  bio: "I study [short bio here]."
+  bio: "I study how we think!"
   location: "City, Country"
-  email: "you@school.edu"
+  email: "radpour@psy.fsu.edu"
   github: "nelurad"
   linkedin: "your-linkedin-slug"
   scholar: "your-scholar-id"    # optional
