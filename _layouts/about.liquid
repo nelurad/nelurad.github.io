@@ -76,6 +76,18 @@ layout: default
     {% if site.newsletter and site.newsletter.enabled and site.footer_fixed %}
       {% include newsletter.liquid center=true %}
     {% endif %}
+
+<style>
+  .profile-small {
+    width: 200px;
+    height: 200px;
+    border-radius: 50% !important;
+    object-fit: cover;
+    overflow: hidden;
+    display: block;
+    margin: auto;
+  }
+</style>
   </article>
 </div>
 
