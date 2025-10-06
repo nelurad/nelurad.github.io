@@ -6,7 +6,7 @@ description:
 nav: true
 nav_order: 6
 ---
-<li><em>Instructor of Record for the following courses:</em>  <br>
+<em>Instructor of Record for the following courses:</em>  <br>
 <li>Introduction to Neuroscience, Fall 2025, Florida State University</li> <br>
 <li>Introduction to Python for Business Analytics, Spring 2021, University of Colorado Boulder</li>
   
