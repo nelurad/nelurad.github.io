@@ -12,9 +12,9 @@ author:
   location: "City, Country"
   email: "radpour@psy.fsu.edu"
   github: "nelurad"
-  linkedin: "your-linkedin-slug"  # e.g., nelu-radpour (not the full URL)
-  scholar: "your-scholar-id"      # optional; leave blank if unsure
-  orcid: "0000-0002-xxxx-xxxx"    # optional; leave blank if unsure
+  linkedin: "radpour"  # e.g., nelu-radpour (not the full URL)
+  scholar: "B5xj-8IAAAAJ"      # optional; leave blank if unsure
+  orcid: "0009-0009-0760-9955"    # optional; leave blank if unsure
 
 last_updated: false
 back_to_top: true
