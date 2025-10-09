@@ -20,7 +20,7 @@ announcements:
 latest_posts:
   enabled: false
   scrollable: true # adds a vertical scroll bar if there are more than 3 new posts items
-  limit: 3 # leave blank to include all the blog posts
+  limit: 1 # leave blank to include all the blog posts
 ---
 Nelu Radpour is a Cognition and Cognitive Neuroscience PhD Candidate and a member of the Learning, Memory and Language Lab in the Department of Psychology at [Florida State University](https://www.fsu.edu/), working with [Dr. Michael Kaschak](https://scholar.google.com/citations?user=4OkEqtMAAAAJ&hl=en). Her research examines how people learn, generalize, and integrate new knowledge, with a particular focus on the embodied nature of cognition and the factors that shape flexibility in learning. She uses a mixed-methods approach that includes experimental studies, computational modeling, and quantitative techniques to study both individual learning and the dynamics of social interaction. She is also interested in the interplay between human learning and artificial intelligence and how comparisons between the two can better inform our understanding of cognition.
 
