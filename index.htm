@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Simple GitHub Page</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f7f9fb; /* Light background */
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Main Content Container -->
+    <div class="max-w-4xl w-full mx-4 p-8 sm:p-12 bg-white rounded-xl shadow-2xl border border-gray-100">
+
+        <!-- Header and Bio -->
+        <header class="text-center pb-8 border-b border-gray-200 mb-8">
+            <h1 class="text-4xl sm:text-5xl font-extrabold text-gray-900 leading-tight">
+                [Your Name Here]
+            </h1>
+            <p class="mt-2 text-xl text-indigo-600 font-semibold">
+                Researcher | Developer | Explorer
+            </p>
+        </header>
+
+        <!-- Project/Study Summary Section -->
+        <section class="mb-10">
+            <h2 class="text-3xl font-bold text-gray-800 mb-4 border-l-4 border-indigo-500 pl-4">
+                Research Focus
+            </h2>
+            <p class="text-gray-700 leading-relaxed text-lg">
+                My work currently investigates the **cross-modal coherence** between sound and semantic meaning in advanced language models, comparing the emergence of cognitive phenomena like the Bouba-Kiki effect in AI with human free-association data. I use computational linguistics to map semantic space and understand how cross-sensory knowledge is encoded.
+            </p>
+        </section>
+
+        <!-- Links/Contact Section (Responsive Grid) -->
+        <section>
+            <h2 class="text-3xl font-bold text-gray-800 mb-6 border-l-4 border-indigo-500 pl-4">
+                Connect & Projects
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                <!-- Link 1: GitHub -->
+                <a href="https://github.com/nelurad" target="_blank" class="block p-5 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition duration-300 transform hover:scale-[1.02] shadow-md">
+                    <div class="flex items-center space-x-3">
+                        <svg class="w-6 h-6 text-indigo-700" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.417 2.865 8.17 6.845 9.5.5.092.682-.217.682-.482 0-.237-.008-.865-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.156-1.11-1.46-1.11-1.46-.909-.624.069-.612.069-.612 1.002.072 1.531 1.03 1.531 1.03.892 1.53 2.341 1.088 2.91.832.091-.647.35-1.088.636-1.339-2.22-.253-4.555-1.107-4.555-4.93 0-1.09.39-1.984 1.029-2.685-.103-.255-.446-1.272.098-2.646 0 0 .84-.27 2.75 1.025A9.59 9.59 0 0112 6.844c.85.004 1.7.115 2.493.332 1.909-1.295 2.748-1.025 2.748-1.025.542 1.374.199 2.39.099 2.646.64.701 1.029 1.595 1.029 2.685 0 3.831-2.336 4.675-4.566 4.922.359.308.679.92.679 1.854 0 1.339-.012 2.419-.012 2.747 0 .267.18.577.688.484C19.137 20.182 22 16.425 22 12.017 22 6.484 17.523 2 12 2z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="text-lg font-semibold text-gray-700">GitHub</span>
+                    </div>
+                    <p class="text-sm mt-1 text-gray-500">Code repositories and projects.</p>
+                </a>
+
+                <!-- Link 2: Study/Data Link -->
+                <a href="#" class="block p-5 bg-green-50 hover:bg-green-100 rounded-lg transition duration-300 transform hover:scale-[1.02] shadow-md">
+                    <div class="flex items-center space-x-3">
+                        <svg class="w-6 h-6 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <span class="text-lg font-semibold text-gray-700">Project Data</span>
+                    </div>
+                    <p class="text-sm mt-1 text-gray-500">Link to the current study's findings/data.</p>
+                </a>
+
+                <!-- Link 3: Email Contact -->
+                <a href="mailto:your.email@example.com" class="block p-5 bg-blue-50 hover:bg-blue-100 rounded-lg transition duration-300 transform hover:scale-[1.02] shadow-md">
+                    <div class="flex items-center space-x-3">
+                        <svg class="w-6 h-6 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                        <span class="text-lg font-semibold text-gray-700">Email Me</span>
+                    </div>
+                    <p class="text-sm mt-1 text-gray-500">Reach out for collaborations.</p>
+                </a>
+
+            </div>
+        </section>
+
+    </div>
+
+</body>
+</html>
