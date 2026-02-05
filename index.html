@@ -6,23 +6,24 @@
   <title>Nelu D. Radpour</title>
 
   <!-- Tailwind -->
-  <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Tailwind color config -->
   <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            warmbrown: '#6b5c4d',
-            softcoral: '#f4a79a',
-            softpink: '#f3d6df',
-            pagebg: '#f6f4f2'
-          }
+  // Tailwind config first
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          warmbrown: '#6b5c4d',
+          softcoral: '#f4a79a',
+          softpink: '#f3d6df',
+          pagebg: '#f6f4f2'
         }
       }
     }
-  </script>
+  };
+</script>
+
+<!-- Then load Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
 
   <!-- Font -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
