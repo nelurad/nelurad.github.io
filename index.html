@@ -34,11 +34,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background-color: #f6f4f2;
-
-
-
-    }
+      background-color: #f6f4f2; }
+    
 .sparkle-highlight {
   display: inline-block;            /* So the background hugs the text */
   padding: 0.1em 0.3em;             /* small padding for the cloud effect */
@@ -46,25 +43,24 @@
   border-radius: 0.25rem;           /* rounded edges for softness */
 }
     /* Sparkle animation ONLY for Research Focus */
-    @keyframes shimmer {
-      0% { background-position: -200% center; }
-      100% { background-position: 200% center; }
-    }
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
 
-    .sparkle {
-      background: linear-gradient(
-        110deg,
-        #f4a79a 40%,
-        #fde5df 50%,
-        #f4a79a 60%
-      );
-      background-size: 200% auto;
-      color: transparent;
-      background-clip: text;
-      -webkit-background-clip: text;
-      animation: shimmer 3s linear infinite;
-    }
-  </style>
+.sparkle {
+  background: linear-gradient(
+    110deg,
+    #f4a79a 40%,
+    #fde5df 50%,
+    #f4a79a 60%
+  );
+  background-size: 200% auto;
+  color: transparent;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: shimmer 3s linear infinite;
+}
 </head>
 
 <body>
