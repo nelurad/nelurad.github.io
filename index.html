@@ -35,6 +35,14 @@
       align-items: center;
       justify-content: center;
       background-color: #f6f4f2;
+
+.sparkle-highlight {
+  display: inline-block;            /* So the background hugs the text */
+  padding: 0.1em 0.3em;             /* small padding for the cloud effect */
+  background-color: #fdf6eb;        /* soft beige/cloud color */
+  border-radius: 0.25rem;           /* rounded edges for softness */
+}
+
     }
 
     /* Sparkle animation ONLY for Research Focus */
@@ -86,8 +94,9 @@
     <!-- Research Focus -->
     <section class="mb-10">
       <h2 class="text-3xl font-bold mb-4 border-l-4 border-softcoral pl-4">
-        <span class="sparkle">Research Focus</span>
-      </h2>
+  <span class="sparkle sparkle-highlight">Research Focus</span>
+</h2>
+
 
       <p class="text-gray-700 leading-relaxed text-lg">
         I study how the human mind uses shared underlying structure to connect seemingly distinct systems, such as perception, language processing, memory, and decision-making. My goal is to better understand the principles that organize cognition, drawing on both human behavior and computational approaches. I work in the
