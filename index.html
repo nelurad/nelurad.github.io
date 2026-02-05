@@ -1,137 +1,107 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nelu D. Radpour</title>
-    <!-- Load Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: #f6f4f2; /* Light background */
-        }
-       <script>
-  tailwind.config = {
-    theme: {
-      extend: {
-        colors: {
-          softpink: '#f3d6df',
-          coral: '#f4a79a',
-          warmbrown: '#6b5c4d'
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nelu D. Radpour</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Tailwind color config -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            warmbrown: '#6b5c4d',
+            softcoral: '#f4a79a',
+            softpink: '#f3d6df',
+            pagebg: '#f6f4f2'
+          }
         }
       }
     }
-  }
-</script>
+  </script>
 
-        }
-        @keyframes shimmer {
-  0% { background-position: -200% center; }
-  100% { background-position: 200% center; }
-}
+  <!-- Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 
-.sparkle {
-  background: linear-gradient(
-    110deg,
-    #6b5c4d 40%,
-    #9fb0c4 50%,
-    #6b5c4d 60%
-  );
-  background-size: 200% auto;
-  color: transparent;
-  background-clip: text;
-  -webkit-background-clip: text;
-  animation: shimmer 3s linear infinite;
-}
-      }
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #f6f4f2;
     }
-  }
-</script>
-    </style>
+  </style>
 </head>
+
 <body>
 
-    <!-- Main Content Container -->
-    <div class="max-w-4xl w-full mx-4 p-8 sm:p-12 bg-white rounded-xl shadow-2xl border border-gray-100">
+  <div class="max-w-4xl w-full mx-4 p-8 sm:p-12 bg-white rounded-xl shadow-2xl border border-gray-100">
 
-        <!-- Header and Bio -->
-        <!-- <img 
-  src="profile.jpg" 
-  alt="Photo of Nelu D. Radpour"
-  class="w-28 h-28 rounded-full object-cover border-4 border-indigo-100 shadow-md"
-/> -->
+    <!-- Header -->
+    <header class="flex flex-col sm:flex-row items-center justify-center gap-6 pb-8 border-b border-gray-200 mb-8 text-center sm:text-left">
 
-<div>
- <header class="flex flex-col sm:flex-row items-center justify-center gap-6 pb-8 border-b border-gray-200 mb-8 text-center sm:text-left">
+      <img
+        src="profile.jpg"
+        alt="Photo of Nelu D. Radpour"
+        class="w-28 h-28 rounded-full object-cover border-4 border-softpink shadow-sm"
+      />
 
-  <img 
-    src="profile.jpg"
-    alt="Photo of Nelu D. Radpour"
-    class="w-28 h-28 rounded-full object-cover border-4 border-dustblueLight shadow-sm"
-  />
+      <div>
+        <h1 class="text-4xl sm:text-5xl font-extrabold text-warmbrown leading-tight">
+          Nelu D. Radpour
+        </h1>
+        <p class="mt-2 text-xl text-softcoral font-semibold">
+          phd candidate | cognition + cognitive neuroscience
+        </p>
+      </div>
 
-  <div>
-    <h1 class="text-4xl sm:text-5xl font-extrabold text-warmbrown leading-tight">
-      Nelu D. Radpour
-    </h1>
-    <p class="mt-2 text-xl text-dustblue font-semibold">
-      phd candidate | cognition + cognitive neuroscience
-    </p>
-  </div>
+    </header>
 
-</header>
+    <!-- Research Focus -->
+    <section class="mb-10">
+      <h2 class="text-3xl font-bold text-softcoral mb-4 border-l-4 border-softcoral pl-4">
+        Research Focus
+      </h2>
 
-</div>
+      <p class="text-gray-700 leading-relaxed text-lg">
+        I study how the human mind uses shared underlying structure to connect seemingly distinct systems, such as perception, language processing, memory, and decision-making. My goal is to better understand the principles that organize cognition, drawing on both human behavior and computational approaches. I work in the
+        <a href="https://kaschaklab.github.io/" target="_blank" class="text-softcoral hover:underline font-semibold">
+          Learning, Memory, and Language Lab
+        </a>
+        with
+        <a href="https://scholar.google.com/citations?user=4OkEqtMAAAAJ&hl=en" target="_blank" class="text-softcoral hover:underline font-semibold">
+          Dr. Kaschak
+        </a>.
+      </p>
+    </section>
 
-        <!-- Project/Study Summary Section -->
-        <section class="mb-10">
-            <h2 class="text-3xl font-bold text-warmbrown mb-4 border-l-4 border-dustblue">
-                <span class="sparkle">Research Focus</span>
-            </h2>
-            <p class="text-gray-700 leading-relaxed text-lg">
-             I study how the human mind uses shared underlying structure to connect our seemingly distinct systems, such as perception, language processing, memory, and decision-making. My goal is to better understand the principles that organize cognition, drawing on both human behavior and computational approaches. I work in the
-    <a href="https://kaschaklab.github.io/" target="_blank" class="text-dustblue hover:underline font-semibold">Learning, Memory, and Language Lab</a> 
-    with 
-    <a href="https://scholar.google.com/citations?user=4OkEqtMAAAAJ&hl=en" target="_blank" class="text--dustblue hover:underline font-semibold">Dr. Kaschak</a>.
-        <!-- Links/Contact Section (Responsive Grid) -->
-        <section>
-            <h2 class="text-3xl font-bold text-gray-800 mb-6 border-l-4 border-indigo-500 pl-4">
-                
-            </h2>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <!-- Links -->
+    <section>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-             
+        <!-- Past Work -->
+        <a href="https://scholar.google.com/citations?hl=en&user=B5xj-8IAAAAJ"
+           class="block p-4 bg-softpink hover:bg-softpink/80 rounded-lg transition duration-300 transform hover:scale-[1.02] shadow-md">
 
-                <!-- Link 2: Study/Data Link -->
-                <a href="https://scholar.google.com/citations?hl=en&user=B5xj-8IAAAAJ" class="block p-3 bg-softpink hover:bg-softpink/80
- hover:bg-dustblueLight/80 rounded-lg transition duration-300 transform hover:scale-[1.02] shadow-md">
-                    <div class="flex items-center space-x-3">
-                        <svg class="w-6 h-6 text-dustblue" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        <span class="text-lg font-semibold text-gray-700">Past Work</span>
-                    </div>
-                    <p class="text-sm mt-1 text-warmbrown">Link to some of my projects.</p>
-                </a>
+          <div class="flex items-center space-x-3">
+            <svg class="w-6 h-6 text-warmbrown" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span class="text-lg font-semibold text-warmbrown">Past Work</span>
+          </div>
 
-                <!-- Link 3: Email Contact -->
-                <a href="mailto:radpour@psy.fsu.edu" class="block p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition duration-300 transform hover:scale-[1.02] shadow-md">
-                    <div class="flex items-center space-x-3">
-                        <svg class="w-6 h-6 text-dustblue" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-                        <span class="text-lg font-semibold text-gray-700">Email Me</span>
-                    </div>
-                    <p class="text-sm mt-1 text-warmbrown">Reach out for collaborations.</p>
-                </a>
+          <p class="text-sm mt-1 text-warmbrown">
+            Link to some of my projects.
+          </p>
+        </a>
 
-            </div>
-        </section>
+        <!-- Email -->
+        <a href="mailto:radpour@
 
-    </div>
-
-</body>
-</html>
