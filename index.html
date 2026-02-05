@@ -14,8 +14,22 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            background-color: #f7f9fb; /* Light background */
+            background-color: #f6f4f2; /* Light background */
         }
+        <script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          dustblue: '#5f738c',
+          dustblueLight: '#e8edf2',
+          warmbrown: '#6b5c4d',
+          warmgray: '#f6f4f2'
+        }
+      }
+    }
+  }
+</script>
     </style>
 </head>
 <body>
@@ -31,22 +45,35 @@
 />
 
 <div>
-  <h1 class="text-4xl sm:text-5xl font-extrabold text-gray-900 leading-tight">
-    Nelu D. Radpour
-  </h1>
-  <p class="mt-2 text-xl text-indigo-600 font-semibold">
-    phd candidate | cognition + cognitive neuroscience
-  </p>
+ <header class="flex flex-col sm:flex-row items-center justify-center gap-6 pb-8 border-b border-gray-200 mb-8 text-center sm:text-left">
+
+  <img 
+    src="assets/profile.jpg"
+    alt="Photo of Nelu D. Radpour"
+    class="w-28 h-28 rounded-full object-cover border-4 border-dustblueLight shadow-sm"
+  />
+
+  <div>
+    <h1 class="text-4xl sm:text-5xl font-extrabold text-warmbrown leading-tight">
+      Nelu D. Radpour
+    </h1>
+    <p class="mt-2 text-xl text-dustblue font-semibold">
+      phd candidate | cognition + cognitive neuroscience
+    </p>
+  </div>
+
+</header>
+
 </div>
 
         <!-- Project/Study Summary Section -->
         <section class="mb-10">
-            <h2 class="text-3xl font-bold text-gray-800 mb-4 border-l-4 border-indigo-500 pl-4">
+            <h2 class="text-3xl font-bold text-warmbrown mb-4 border-l-4 border-dustblue">
                 Research Focus
             </h2>
             <p class="text-gray-700 leading-relaxed text-lg">
              I study how the human mind uses shared underlying structure to connect our seemingly distinct systems, such as perception, language processing, memory, and decision-making. My goal is to better understand the principles that organize cognition, drawing on both human behavior and computational approaches. I work in the
-    <a href="https://kaschaklab.github.io/" target="_blank" class="text-indigo-600 hover:underline font-semibold">Learning, Memory, and Language Lab</a> 
+    <a href="https://kaschaklab.github.io/" target="_blank" class="text-dustblue hover:underline font-semibold">Learning, Memory, and Language Lab</a> 
     with 
     <a href="https://scholar.google.com/citations?user=4OkEqtMAAAAJ&hl=en" target="_blank" class="text-indigo-600 hover:underline font-semibold">Dr. Kaschak</a>.
         <!-- Links/Contact Section (Responsive Grid) -->
@@ -60,9 +87,9 @@
              
 
                 <!-- Link 2: Study/Data Link -->
-                <a href="https://scholar.google.com/citations?hl=en&user=B5xj-8IAAAAJ" class="block p-3 bg-green-50 hover:bg-green-100 rounded-lg transition duration-300 transform hover:scale-[1.02] shadow-md">
+                <a href="https://scholar.google.com/citations?hl=en&user=B5xj-8IAAAAJ" class="block p-3 bg-green-50 hover:bg-dustblueLight hover:bg-dustblueLight/80 rounded-lg transition duration-300 transform hover:scale-[1.02] shadow-md">
                     <div class="flex items-center space-x-3">
-                        <svg class="w-6 h-6 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <svg class="w-6 h-6 text-dustblue" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                         <span class="text-lg font-semibold text-gray-700">Past Work</span>
                     </div>
                     <p class="text-sm mt-1 text-gray-500">Link to some of my projects.</p>
