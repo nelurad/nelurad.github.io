@@ -26,6 +26,24 @@
           warmbrown: '#6b5c4d',
           warmgray: '#f6f4f2'
         }
+        @keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.sparkle {
+  background: linear-gradient(
+    110deg,
+    #6b5c4d 40%,
+    #9fb0c4 50%,
+    #6b5c4d 60%
+  );
+  background-size: 200% auto;
+  color: transparent;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: shimmer 3s linear infinite;
+}
       }
     }
   }
@@ -69,7 +87,7 @@
         <!-- Project/Study Summary Section -->
         <section class="mb-10">
             <h2 class="text-3xl font-bold text-warmbrown mb-4 border-l-4 border-dustblue">
-                Research Focus
+                <span class="sparkle">Research Focus</span>
             </h2>
             <p class="text-gray-700 leading-relaxed text-lg">
              I study how the human mind uses shared underlying structure to connect our seemingly distinct systems, such as perception, language processing, memory, and decision-making. My goal is to better understand the principles that organize cognition, drawing on both human behavior and computational approaches. I work in the
