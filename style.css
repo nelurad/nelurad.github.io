@@ -99,3 +99,13 @@ ul li { line-height: 2.4rem; font-weight: 300; }
 /* fade-in like the original */
 .animated { animation: fade-in-down .6s .3s both; }
 @keyframes fade-in-down { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+
+.research { padding-left: 2.2rem; margin: 0 0 20px; }
+.research li {
+  font-size: 1.6rem;
+  line-height: 1.7;
+  font-weight: 300;
+  letter-spacing: 0.4px;
+  color: var(--text);
+  margin-bottom: 8px;
+}
