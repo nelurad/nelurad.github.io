@@ -109,3 +109,7 @@ ul li { line-height: 2.4rem; font-weight: 300; }
   color: var(--text);
   margin-bottom: 8px;
 }
+
+.social-links .img-icon { width: 18px; height: 18px; vertical-align: middle; border-radius: 0; transition: opacity .2s; }
+.social-links a:hover .img-icon { opacity: .6; }
+@media (prefers-color-scheme: dark) { .social-links .img-icon { filter: invert(1); } }
