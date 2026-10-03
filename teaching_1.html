@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Teaching · Nelu D. Radpour</title>
+  <link rel="icon" type="image/png" href="sun-icon-36037.png" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* ---- teaching page ---- */
+    .teaching > h1 { text-align: left; margin-bottom: 1.2rem; }
+    .page.teaching p { text-align: left; }
+    .teaching .lede { margin-bottom: 3.2rem; }
+
+    .stats { display: flex; gap: 4rem; margin: 0 0 4.5rem; flex-wrap: wrap; }
+    .stat .num { display: block; font-size: 3.2rem; font-weight: 300; color: var(--heading); letter-spacing: -0.5px; line-height: 1.1; }
+    .stat .label { font-size: 1.25rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1.2px; }
+
+    .section-label {
+      font-size: 1.2rem; font-weight: 400; text-transform: uppercase; letter-spacing: 2px;
+      color: var(--accent); margin: 0 0 1.8rem; padding-bottom: .8rem; border-bottom: 1px solid var(--line);
+    }
+    .section { margin-bottom: 4.5rem; }
+
+    .course { margin-bottom: 2.6rem; }
+    .course-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1.6rem; }
+    .course-title { font-size: 1.8rem; font-weight: 400; color: var(--heading); margin: 0; }
+    .course-years { font-size: 1.3rem; color: var(--muted); white-space: nowrap; font-weight: 300; }
+    .course-place { font-size: 1.4rem; color: var(--muted); font-weight: 300; margin: .3rem 0 1rem; }
+
+    .terms { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .8rem; }
+    .terms li {
+      font-size: 1.25rem; line-height: 1; font-weight: 300; color: var(--text);
+      border: 1px solid var(--line); border-radius: 999px; padding: .7rem 1.2rem;
+    }
+    .terms li b { font-weight: 400; color: var(--heading); }
+
+    @media (max-width: 480px) {
+      .course-head { flex-direction: column; gap: .2rem; }
+      .stats { gap: 2.4rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <nav class="nav">
+    <ul>
+      <li><a href="index.html">home</a></li>
+      <li><a href="about.html">about</a></li>
+    </ul>
+  </nav>
+
+  <div class="page teaching animated">
+    <h1>Teaching</h1>
+    <p class="lede">I've taught across psychology, neuroscience, and computing, from large introductory lectures to hands-on programming courses.</p>
+
+    <div class="stats">
+      <div class="stat"><span class="num">650+</span><span class="label">students taught</span></div>
+      <div class="stat"><span class="num">5</span><span class="label">courses taught</span></div>
+      <div class="stat"><span class="num">2019</span><span class="label">teaching since</span></div>
+    </div>
+
+    <!-- ===== Instructor of Record ===== -->
+    <div class="section">
+      <h2 class="section-label">Instructor of Record</h2>
+
+      <div class="course">
+        <div class="course-head">
+          <h3 class="course-title">Introduction to Neuroscience</h3>
+          <span class="course-years">2025–present</span>
+        </div>
+        <p class="course-place">Florida State University · Department of Psychology</p>
+        <ul class="terms">
+          <li><b>Fall 2026</b> · 218 students</li>
+          <li><b>Summer 2026</b> · 49 students</li>
+          <li><b>Spring 2026</b> · 158 students</li>
+          <li><b>Fall 2025</b> · 196 students</li>
+        </ul>
+      </div>
+
+      <div class="course">
+        <div class="course-head">
+          <h3 class="course-title">Introduction to Python for Business Analytics</h3>
+          <span class="course-years">2021</span>
+        </div>
+        <p class="course-place">University of Colorado Boulder · Leeds School of Business</p>
+        <ul class="terms">
+          <li><b>Spring 2021</b> · 35 students</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ===== Teaching Assistant ===== -->
+    <div class="section">
+      <h2 class="section-label">Teaching Assistant</h2>
+
+      <div class="course">
+        <div class="course-head">
+          <h3 class="course-title">Computation in Society</h3>
+          <span class="course-years">2022</span>
+        </div>
+        <p class="course-place">University of Colorado Boulder · Department of Information Science</p>
+        <ul class="terms"><li><b>Summer 2022</b> · 1 section</li></ul>
+      </div>
+
+      <div class="course">
+        <div class="course-head">
+          <h3 class="course-title">Information Visualization</h3>
+          <span class="course-years">2022</span>
+        </div>
+        <p class="course-place">University of Colorado Boulder · Department of Information Science</p>
+        <ul class="terms"><li><b>Spring 2022</b> · 1 section</li></ul>
+      </div>
+
+      <div class="course">
+        <div class="course-head">
+          <h3 class="course-title">Computational Reasoning</h3>
+          <span class="course-years">2019–2020</span>
+        </div>
+        <p class="course-place">University of Colorado Boulder · Department of Information Science</p>
+        <ul class="terms"><li><b>Fall 2019–Fall 2020</b> · 1 section</li></ul>
+      </div>
+    </div>
+
+    <!-- ===== Mentorship ===== -->
+    <div class="section">
+      <h2 class="section-label">Mentorship</h2>
+
+      <div class="course">
+        <div class="course-head">
+          <h3 class="course-title">Undergraduate Research Opportunities Program (UROP) Mentor</h3>
+          <span class="course-years">2025–present</span>
+        </div>
+        <p class="course-place">Florida State University</p>
+      </div>
+      <!-- To add another mentorship role, copy the "course" block above and edit it. -->
+    </div>
+
+    <!-- ===== Early Childhood Education ===== -->
+    <div class="section">
+      <h2 class="section-label">Early Childhood Education</h2>
+
+      <div class="course">
+        <div class="course-head">
+          <h3 class="course-title">Assistant Teacher</h3>
+          <span class="course-years">2022–2024</span>
+        </div>
+        <p class="course-place">Boulder Montessori School · Boulder, CO</p>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer-main">
+    Nelu D. Radpour &copy; <span id="yr">2026</span>
+    <p><a href="https://github.com/sergiokopplin/indigo" style="color:inherit;text-decoration:none">Indigo theme</a> by <a href="https://github.com/sergiokopplin/indigo" style="color:inherit;text-decoration:none">Kopplin</a></p>
+  </footer>
+</div>
+<script>document.getElementById('yr').textContent = new Date().getFullYear();</script>
+</body>
+</html>
