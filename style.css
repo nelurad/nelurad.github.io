@@ -110,9 +110,11 @@ ul li { line-height: 2.4rem; font-weight: 300; }
   margin-bottom: 8px;
 }
 
-.social-links .img-icon { width: 17px; height: 17px; vertical-align: middle; border-radius: 0; transition: opacity .2s; }
+.social-links .img-icon { width: 18px; height: 18px; vertical-align: middle; border-radius: 0; transition: opacity .2s; }
 .social-links a:hover .img-icon { opacity: .6; }
 @media (prefers-color-scheme: dark) { .social-links .img-icon { filter: invert(1); } }
 
    /* floating network background */
    .bg-network { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
+
+   .social-links a[title="Email"] svg { width: 21px; height: 21px; }
