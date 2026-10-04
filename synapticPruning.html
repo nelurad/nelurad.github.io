@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Synaptic Pruning</title>
+<style>
+  body { margin: 0; background: #cdf5f5; font-family: Arial, Helvetica, sans-serif; color: #111; }
+  .wrap { max-width: 1150px; margin: 0 auto; padding: 14px 16px 40px; }
+  .back { font-size: 14px; color: #1a4f8b; }
+  h1 { font-size: 28px; margin: 8px 0 4px; }
+  .intro { margin: 0 0 14px; font-size: 16px; max-width: 72ch; line-height: 1.4; }
+
+  .sim { display: grid; grid-template-columns: minmax(0, 1fr) 270px; gap: 14px; align-items: start; }
+  @media (max-width: 860px) { .sim { grid-template-columns: minmax(0, 1fr); } }
+
+  .stage { position: relative; aspect-ratio: 3 / 2; background: #e2fcfc; border: 1px solid #9cc; }
+  .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .readout { position: absolute; top: 10px; left: 10px; background: #fff; border: 1px solid #333; border-radius: 4px; padding: 5px 10px; font-size: 14px; line-height: 1.35; pointer-events: none; }
+  .readout b { font-size: 18px; }
+
+  .controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
+  .box { background: #f0efc6; border: 1.5px solid #8c8c70; border-radius: 10px; padding: 10px 14px; }
+  .box h2 { font-size: 19px; margin: 0 0 6px; }
+  .opt { display: flex; align-items: center; gap: 8px; font-size: 16px; margin: 6px 0; cursor: pointer; }
+  input[type=checkbox], input[type=radio] { width: 18px; height: 18px; margin: 0; cursor: pointer; }
+  .speedbox .opt { margin: 3px 0; }
+
+  .transport { display: flex; align-items: center; gap: 10px; }
+  .rbtn { border-radius: 50%; border: 1px solid #555; cursor: pointer; display: grid; place-items: center; padding: 0; box-shadow: 0 2px 3px rgba(0,0,0,.35); }
+  .rbtn:active { transform: translateY(1px); box-shadow: 0 1px 1px rgba(0,0,0,.35); }
+  .play  { width: 66px; height: 66px; background: radial-gradient(circle at 35% 30%, #e3f1ff 0%, #8cc4f5 45%, #4a90d0 100%); border-color: #2f6699; }
+  .step  { width: 46px; height: 46px; background: radial-gradient(circle at 35% 30%, #fff, #d6d6d6 55%, #a8a8a8); }
+  .reset { width: 56px; height: 56px; background: radial-gradient(circle at 35% 30%, #ffd29a, #f7941d 55%, #d36f00); border-color: #9a5000; }
+  .right-ctrl { display: flex; align-items: center; gap: 14px; }
+  .bigyellow { background: #f6ec3c; border: 1.5px solid #8c8424; border-radius: 6px; font: bold 17px/1.15 Arial, sans-serif; padding: 11px 16px; cursor: pointer; box-shadow: 0 2px 3px rgba(0,0,0,.3); color: #111; }
+  .bigyellow:active { transform: translateY(1px); }
+  button:focus-visible, input:focus-visible { outline: 3px solid #1565c0; outline-offset: 2px; }
+
+  .side { display: grid; gap: 12px; }
+  .lg { display: flex; align-items: center; gap: 10px; margin: 6px 0; font-size: 15px; }
+  .lg svg { flex: none; }
+  .sw { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 1px solid #333; flex: none; }
+
+  .chartbox { margin-top: 12px; background: #fff; border: 1.5px solid #8c8c70; border-radius: 10px; padding: 8px 12px 6px; }
+  .chartbox h2 { font-size: 17px; margin: 0; }
+  .stats { display: flex; flex-wrap: wrap; gap: 4px 22px; font-size: 15px; margin: 4px 0 6px; }
+  .stats b { font-variant-numeric: tabular-nums; }
+  #chart { width: 100%; height: 150px; display: block; }
+
+  .info { background: #fff; border: 1px solid #9cc; padding: 6px 20px 14px; margin-top: 18px; font-size: 15px; line-height: 1.5; }
+  .info h2 { font-size: 20px; margin: 14px 0 6px; }
+  .info ol { margin: 0; padding-left: 22px; }
+  .info li { margin: 6px 0; }
+  .info p { margin: 6px 0; max-width: 80ch; }
+  footer { font-size: 13px; color: #355; margin-top: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/teaching.html">&larr; Back to Teaching</a>
+  <h1>Synaptic Pruning</h1>
+  <p class="intro">A young brain grows far more connections than it needs, then keeps the ones that get used and removes the rest. Press play and watch 20 years go by. At Normal speed, one second is about half a year.</p>
+
+  <div class="sim">
+    <div>
+      <div class="stage" id="stage">
+        <canvas id="net" role="img" aria-label="Animated network of neurons and synapses being pruned over time"></canvas>
+        <div class="readout">Age: <b id="age">0.0</b> years<br><span id="phase">Synapse overproduction</span></div>
+      </div>
+
+      <div class="controls">
+        <div class="box speedbox" role="radiogroup" aria-label="Speed">
+          <label class="opt"><input type="radio" name="speed" value="3"> Fast Forward</label>
+          <label class="opt"><input type="radio" name="speed" value="1" checked> Normal</label>
+          <label class="opt"><input type="radio" name="speed" value="0.4"> Slow Motion</label>
+        </div>
+
+        <div class="transport">
+          <button class="rbtn play" id="play" type="button" aria-label="Pause"></button>
+          <button class="rbtn step" id="stepBtn" type="button" aria-label="Step forward">
+            <svg width="22" height="22" viewBox="0 0 22 22"><rect x="3" y="4" width="3.5" height="14" fill="#555"/><path d="M9 4 L19 11 L9 18 Z" fill="#555"/></svg>
+          </button>
+        </div>
+
+        <div class="right-ctrl">
+          <button class="bigyellow" id="stim" type="button">Use<br>Pathways</button>
+          <button class="rbtn reset" id="restart" type="button" aria-label="Restart">
+            <svg width="30" height="30" viewBox="0 0 30 30"><path d="M22 9 A9 9 0 1 0 24 16" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/><path d="M17 5 L25 5 L24 13 Z" fill="#fff"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="chartbox" id="chartbox">
+        <h2>Synapse Count</h2>
+        <div class="stats">
+          <span>Now: <b id="sNow">0</b></span>
+          <span>Peak: <b id="sPeak">0</b></span>
+          <span>Pruned: <b id="sPruned">0</b></span>
+          <span>Now vs. peak: <b id="sPct">–</b></span>
+        </div>
+        <canvas id="chart" role="img" aria-label="Synapse count by age, birth to 20 years"></canvas>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="box">
+        <h2>Legend</h2>
+        <div class="lg"><svg width="28" height="18"><circle cx="14" cy="9" r="6" fill="#ffe94a" stroke="#333" stroke-width="1.5"/></svg>Neuron</div>
+        <div class="lg"><svg width="28" height="18"><line x1="2" y1="9" x2="26" y2="9" stroke="#5d7088" stroke-width="3"/><circle cx="22" cy="9" r="2.5" fill="#5d7088"/></svg>Synapse</div>
+        <div class="lg"><svg width="28" height="18"><line x1="2" y1="9" x2="26" y2="9" stroke="#e53935" stroke-width="2.5" stroke-dasharray="4 3"/></svg>Tagged Synapse</div>
+        <div class="lg"><svg width="28" height="18"><path d="M14 2 C20 2 22 6 21 9 C22 13 18 16 14 16 C9 16 6 13 7 9 C6 5 9 2 14 2 Z" fill="#8bd24a" stroke="#2e7d32" stroke-width="1.5"/></svg>Microglia</div>
+        <div class="lg"><svg width="28" height="18"><circle cx="14" cy="9" r="4" fill="#fff" stroke="#111" stroke-width="1.5"/></svg>Signal</div>
+      </div>
+
+      <div class="box">
+        <h2>Experiences</h2>
+        <div id="exps"></div>
+      </div>
+
+      <div class="box">
+        <h2>Show</h2>
+        <label class="opt"><input type="checkbox" id="showGlia" checked> Microglia</label>
+        <label class="opt"><input type="checkbox" id="showSignals" checked> Signals</label>
+        <label class="opt"><input type="checkbox" id="showTags" checked> Tagged Synapses</label>
+        <label class="opt"><input type="checkbox" id="showChart" checked> Synapse Chart</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="info">
+    <h2>What's happening?</h2>
+    <ol>
+      <li><b>Overproduction.</b> In the first years of life, neurons form synapses much faster than they will need them. Synapse density in human cortex peaks in early childhood, well above adult levels.</li>
+      <li><b>Use strengthens.</b> When one neuron repeatedly helps the next one fire, the synapse between them gets stronger. Here, each experience (Vision, Language, Music) drives one pathway again and again.</li>
+      <li><b>Weak synapses get tagged.</b> Synapses that rarely carry signals weaken. Complement proteins (C1q and C3) mark them for removal. Tagged synapses turn into red dashed lines, and can still be rescued if they get used.</li>
+      <li><b>Microglia remove them.</b> Microglia, the brain's resident immune cells, find tagged synapses and engulf them.</li>
+    </ol>
+
+    <h2>Try this</h2>
+    <p>Uncheck <b>Music</b> before age 5 and watch its orange pathway fade, get tagged, and get eaten. Check it again later. Does the pathway come back?</p>
+
+    <h2>Keep in mind</h2>
+    <p>This is a simplified model. In it, removed synapses never regrow. Real brains still form new synapses throughout life, just far fewer. A human cortex has around 100 trillion synapses, and different regions prune on different schedules: visual areas peak within the first year, while prefrontal cortex keeps pruning into the twenties.</p>
+    <p>Artificial neural networks get pruned too. After training, deleting the smallest weights often costs little accuracy.</p>
+  </div>
+
+  <footer>Made by Nelu Radpour for Introduction to Neuroscience (PSB 2000), Florida State University.</footer>
+</div>
+
+<script>
+(() => {
+  const COL = { bg: '#e2fcfc', syn: '#5d7088', tag: '#e53935', glia: '#8bd24a', gliaEdge: '#2e7d32', soma: '#ffe94a', somaFire: '#fff7b0', edge: '#333' };
+  const EXP = [
+    { name: 'Vision',   color: '#1e88e5', band: 0.2, on: true },
+    { name: 'Language', color: '#8e24aa', band: 0.5, on: true },
+    { name: 'Music',    color: '#fb8c00', band: 0.8, on: true },
+  ];
+  const show = { glia: true, signals: true, tags: true };
+
+  const W = 1.5, H = 1;
+  const YEARS_PER_SEC = 0.5, END_AGE = 20;
+  const TAG_BELOW = 0.1, RESCUE_ABOVE = 0.16;
+
+  let neurons, syn, glia, events, pulses, history, simT, pruned, peak, growOrder, grown;
+  let playing = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let speed = 1;
+
+  function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+  function build() {
+    const rand = mulberry32(11);
+    neurons = [];
+    for (let tries = 0; neurons.length < 58 && tries < 20000; tries++) {
+      const x = 0.07 + rand() * (W - 0.14), y = 0.08 + rand() * (H - 0.16);
+      if (neurons.every(n => Math.hypot(n.x - x, n.y - y) > 0.088)) neurons.push({ x, y, lastFire: -9, out: [], inc: [], color: null });
+    }
+    syn = [];
+    for (let i = 0; i < neurons.length; i++) for (let j = i + 1; j < neurons.length; j++) {
+      const a = neurons[i], b = neurons[j];
+      if (Math.hypot(a.x - b.x, a.y - b.y) < 0.27) {
+        const [pre, post] = a.x <= b.x ? [a, b] : [b, a];
+        const s = { pre, post, w: 0, exists: false, removed: false, tagged: false, claimed: null, eat: 0, path: -1, w0: 0 };
+        syn.push(s); pre.out.push(s); post.inc.push(s);
+      }
+    }
+    EXP.forEach((e, k) => {
+      let cur = neurons.reduce((best, n) => (n.x + 2 * Math.abs(n.y - e.band) < best.x + 2 * Math.abs(best.y - e.band) ? n : best));
+      e.path = [];
+      cur.color = cur.color || e.color;
+      while (cur.x < W - 0.2) {
+        let pick = null, ps = -Infinity;
+        for (const s of cur.out) { const sc = (s.post.x - cur.x) - 1.3 * Math.abs(s.post.y - e.band); if (sc > ps) { ps = sc; pick = s; } }
+        if (!pick) break;
+        e.path.push(pick);
+        if (pick.path < 0) pick.path = k;
+        cur = pick.post;
+        cur.color = cur.color || e.color;
+      }
+      e.next = 0.4 + k * 0.35;
+    });
+    growOrder = syn.map((_, i) => i);
+    for (let i = growOrder.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [growOrder[i], growOrder[j]] = [growOrder[j], growOrder[i]]; }
+    syn.forEach(s => { s.w0 = 0.2 + rand() * 0.45; });
+
+    glia = Array.from({ length: 9 }, () => ({ x: 0.1 + rand() * (W - 0.2), y: 0.1 + rand() * (H - 0.2), vx: 0, vy: 0, target: null, phase: rand() * 6.28 }));
+    events = []; pulses = []; history = []; simT = 0; pruned = 0; peak = 0; grown = 0;
+    grow(0);
+  }
+
+  const age = () => simT * YEARS_PER_SEC;
+  const alive = s => s.exists && !s.removed;
+  const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+  function grow(a) {
+    const target = Math.floor(syn.length * Math.min(1, 0.3 + 0.7 * a / 2));
+    while (grown < target) { const s = syn[growOrder[grown++]]; s.exists = true; s.w = s.w0; }
+  }
+
+  function decayRate(a) {
+    return 0.012 * smooth(1.5, 3, a) * (a > 14 ? Math.max(0.35, 1 - (a - 14) / 6) : 1);
+  }
+
+  function stimulate(e) {
+    let t = simT;
+    events.push({ n: e.path[0].pre, t });
+    for (const s of e.path) {
+      if (!alive(s)) break;
+      pulses.push({ s, t0: t, col: e.color });
+      t += 0.2;
+      events.push({ n: s.post, t });
+    }
+  }
+
+  function fire(n) {
+    if (simT - n.lastFire < 0.35) return;
+    // Hebbian rule: if the upstream neuron fired just before this one, strengthen that synapse.
+    for (const s of n.inc) {
+      if (!alive(s)) continue;
+      const lag = simT - s.pre.lastFire;
+      if (lag > 0.05 && lag < 0.45) {
+        s.w += 0.12 * (1 - s.w);
+        if (s.tagged && s.w > RESCUE_ABOVE) { s.tagged = false; release(s); }
+      }
+    }
+    n.lastFire = simT;
+    for (const s of n.out) {
+      if (alive(s) && events.length < 400 && Math.random() < s.w * 0.42) {
+        pulses.push({ s, t0: simT, col: null });
+        events.push({ n: s.post, t: simT + 0.2 });
+      }
+    }
+  }
+
+  function release(s) { if (s.claimed) { s.claimed.target = null; s.claimed = null; } s.eat = 0; }
+  const mid = s => ({ x: (s.pre.x + s.post.x) / 2, y: (s.pre.y + s.post.y) / 2 });
+
+  function updateGlia(dt) {
+    for (const g of glia) {
+      if (!g.target) {
+        let best = null, bd = Infinity;
+        for (const s of syn) if (s.tagged && !s.claimed && alive(s)) { const m = mid(s), d = Math.hypot(m.x - g.x, m.y - g.y); if (d < bd) { bd = d; best = s; } }
+        if (best) { g.target = best; best.claimed = g; }
+      }
+      if (g.target) {
+        const m = mid(g.target), dx = m.x - g.x, dy = m.y - g.y, d = Math.hypot(dx, dy);
+        if (d > 0.012) { const st = Math.min(d, 0.32 * dt); g.x += dx / d * st; g.y += dy / d * st; }
+        else {
+          g.target.eat += dt / 0.7;
+          if (g.target.eat >= 1) { const s = g.target; s.removed = true; s.tagged = false; s.claimed = null; pruned++; g.target = null; }
+        }
+      } else {
+        g.vx = (g.vx + (Math.random() - 0.5) * 0.4 * dt) * 0.98;
+        g.vy = (g.vy + (Math.random() - 0.5) * 0.4 * dt) * 0.98;
+        const sp = Math.hypot(g.vx, g.vy); if (sp > 0.05) { g.vx *= 0.05 / sp; g.vy *= 0.05 / sp; }
+        g.x += g.vx * dt; g.y += g.vy * dt;
+        if (g.x < 0.04 || g.x > W - 0.04) g.vx *= -1;
+        if (g.y < 0.04 || g.y > H - 0.04) g.vy *= -1;
+        g.x = Math.min(W - 0.04, Math.max(0.04, g.x)); g.y = Math.min(H - 0.04, Math.max(0.04, g.y));
+      }
+    }
+  }
+
+  const count = () => syn.reduce((c, s) => c + (alive(s) ? 1 : 0), 0);
+
+  function step(dt) {
+    simT += dt;
+    const a = age();
+    grow(a);
+    if (a > 0.15) for (const e of EXP) if (e.on && simT >= e.next) { stimulate(e); e.next = simT + 0.9 + Math.random() * 0.7; }
+    for (const n of neurons) if (Math.random() < 0.035 * dt) fire(n);
+    for (let i = events.length - 1; i >= 0; i--) if (events[i].t <= simT) { const ev = events[i]; events.splice(i, 1); fire(ev.n); }
+    const d = decayRate(a) * dt;
+    for (const s of syn) {
+      if (!alive(s)) continue;
+      s.w = Math.max(0, s.w - d);
+      if (!s.tagged && s.w < TAG_BELOW) s.tagged = true;
+    }
+    updateGlia(dt);
+    const c = count();
+    peak = Math.max(peak, c);
+    if (!history.length || a - history[history.length - 1].a >= 0.1) history.push({ a, c });
+  }
+
+  // ---------- drawing ----------
+  const stage = document.getElementById('stage');
+  const net = document.getElementById('net'), ctx = net.getContext('2d');
+  const chart = document.getElementById('chart'), cctx = chart.getContext('2d');
+  let dpr = 1, cw = 0, ch = 0, chW = 0, chH = 0;
+
+  function resize() {
+    dpr = window.devicePixelRatio || 1;
+    cw = stage.clientWidth; ch = stage.clientHeight;
+    net.width = Math.round(cw * dpr); net.height = Math.round(ch * dpr);
+    chW = chart.clientWidth; chH = chart.clientHeight;
+    chart.width = Math.round(chW * dpr); chart.height = Math.round(chH * dpr);
+  }
+  new ResizeObserver(resize).observe(stage);
+  new ResizeObserver(resize).observe(chart);
+
+  function draw() {
+    const s = cw / W, k = Math.max(0.6, cw / 900);
+    const X = p => p.x * s, Y = p => p.y * (ch / H);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = COL.bg; ctx.fillRect(0, 0, cw, ch);
+
+    ctx.lineCap = 'round';
+    for (const e of syn) {
+      if (!alive(e)) continue;
+      const tagged = e.tagged && show.tags;
+      let col = COL.syn;
+      if (e.path >= 0 && e.w > 0.45) col = EXP[e.path].color;
+      if (tagged) col = COL.tag;
+      ctx.globalAlpha = (0.2 + 0.8 * e.w) * (1 - e.eat);
+      ctx.strokeStyle = col; ctx.fillStyle = col;
+      ctx.lineWidth = (0.8 + 3 * e.w) * k;
+      ctx.setLineDash(tagged ? [5 * k, 4 * k] : []);
+      const ax = X(e.pre), ay = Y(e.pre), bx = X(e.post), by = Y(e.post);
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+      ctx.beginPath(); ctx.arc(ax + (bx - ax) * 0.8, ay + (by - ay) * 0.8, (1.4 + 1.8 * e.w) * k, 0, 6.283); ctx.fill();
+    }
+    ctx.setLineDash([]);
+
+    for (let i = pulses.length - 1; i >= 0; i--) {
+      const p = pulses[i], f = (simT - p.t0) / 0.2;
+      if (f > 1 || p.s.removed) { pulses.splice(i, 1); continue; }
+      if (f < 0 || !show.signals) continue;
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = p.col || '#fff'; ctx.strokeStyle = '#111'; ctx.lineWidth = 1.2 * k;
+      ctx.beginPath();
+      ctx.arc(X(p.s.pre) + (X(p.s.post) - X(p.s.pre)) * f, Y(p.s.pre) + (Y(p.s.post) - Y(p.s.pre)) * f, 3.2 * k, 0, 6.283);
+      ctx.fill(); ctx.stroke();
+    }
+
+    for (const n of neurons) {
+      const glow = Math.max(0, 1 - (simT - n.lastFire) / 0.4);
+      const x = X(n), y = Y(n), r = (6.5 + 2 * glow) * k;
+      ctx.globalAlpha = 1;
+      if (n.color) { ctx.fillStyle = n.color; ctx.beginPath(); ctx.arc(x, y, r + 3 * k, 0, 6.283); ctx.fill(); }
+      ctx.fillStyle = glow > 0.05 ? COL.somaFire : COL.soma;
+      ctx.strokeStyle = COL.edge; ctx.lineWidth = 1.5 * k;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.fill(); ctx.stroke();
+    }
+
+    if (show.glia) for (const g of glia) {
+      const x = X(g), y = Y(g), base = (g.target && g.target.eat > 0 ? 11 : 9) * k;
+      ctx.beginPath();
+      for (let i = 0; i <= 14; i++) {
+        const ang = i / 14 * 6.283, r = base * (1 + 0.18 * Math.sin(g.phase + i * 1.7 + simT * 3));
+        i ? ctx.lineTo(x + Math.cos(ang) * r, y + Math.sin(ang) * r) : ctx.moveTo(x + Math.cos(ang) * r, y + Math.sin(ang) * r);
+      }
+      ctx.closePath();
+      ctx.globalAlpha = 0.9; ctx.fillStyle = COL.glia; ctx.fill();
+      ctx.globalAlpha = 1; ctx.strokeStyle = COL.gliaEdge; ctx.lineWidth = 1.5 * k; ctx.stroke();
+      ctx.fillStyle = COL.gliaEdge; ctx.beginPath(); ctx.arc(x, y, 2.2 * k, 0, 6.283); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawChart() {
+    if (!chW || !chH) return;
+    const c = cctx, w = chW, h = chH, padL = 44, padR = 10, padT = 8, padB = 30;
+    const yMax = syn.length, px = a => padL + (a / END_AGE) * (w - padL - padR), py = v => padT + (1 - v / yMax) * (h - padT - padB);
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.fillStyle = '#fff'; c.fillRect(0, 0, w, h);
+    c.font = '12px Arial, sans-serif'; c.textBaseline = 'middle'; c.lineWidth = 1;
+    c.strokeStyle = '#ddd';
+    for (const a of [5, 10, 15, 20]) { c.beginPath(); c.moveTo(px(a), padT); c.lineTo(px(a), h - padB); c.stroke(); }
+    for (const v of [0.5, 1]) { c.beginPath(); c.moveTo(padL, py(yMax * v)); c.lineTo(w - padR, py(yMax * v)); c.stroke(); }
+    c.strokeStyle = '#000'; c.lineWidth = 1.5;
+    c.beginPath(); c.moveTo(padL, padT); c.lineTo(padL, h - padB); c.lineTo(w - padR, h - padB); c.stroke();
+    c.fillStyle = '#000';
+    c.textAlign = 'center';
+    for (const a of [0, 5, 10, 15, 20]) c.fillText(String(a), px(a), h - padB + 10);
+    c.fillText('Age (years)', (padL + w - padR) / 2, h - 6);
+    c.textAlign = 'right';
+    c.fillText(String(yMax), padL - 5, py(yMax)); c.fillText('0', padL - 5, py(0));
+    if (history.length < 2) return;
+    c.beginPath(); history.forEach((p, i) => i ? c.lineTo(px(p.a), py(p.c)) : c.moveTo(px(p.a), py(p.c)));
+    c.strokeStyle = '#1565c0'; c.lineWidth = 2.5; c.stroke();
+    const pk = history.reduce((b, p) => (p.c > b.c ? p : b));
+    c.fillStyle = '#e53935'; c.strokeStyle = '#000'; c.lineWidth = 1;
+    c.beginPath(); c.arc(px(pk.a), py(pk.c), 4, 0, 6.283); c.fill(); c.stroke();
+    c.fillStyle = '#000'; c.textAlign = 'left'; c.fillText('peak', px(pk.a) + 7, py(pk.c) + 2);
+  }
+
+  // ---------- UI ----------
+  const $ = id => document.getElementById(id);
+  const phaseName = a => a < 2 ? 'Synapse overproduction' : a < 3 ? 'Peak density' : a < 12 ? 'Pruning (childhood)' : a < 18 ? 'Pruning (adolescence)' : 'Adult';
+
+  const expBox = $('exps');
+  EXP.forEach(e => {
+    const l = document.createElement('label');
+    l.className = 'opt';
+    l.innerHTML = `<input type="checkbox" checked> <span class="sw" style="background:${e.color}"></span> ${e.name}`;
+    l.querySelector('input').addEventListener('change', ev => { e.on = ev.target.checked; });
+    expBox.appendChild(l);
+  });
+
+  const PLAY_ICON = '<svg width="28" height="28" viewBox="0 0 28 28"><path d="M8 4 L24 14 L8 24 Z" fill="#123"/></svg>';
+  const PAUSE_ICON = '<svg width="28" height="28" viewBox="0 0 28 28"><rect x="6" y="4" width="6" height="20" fill="#123"/><rect x="16" y="4" width="6" height="20" fill="#123"/></svg>';
+  function syncPlay() {
+    $('play').innerHTML = playing ? PAUSE_ICON : PLAY_ICON;
+    $('play').setAttribute('aria-label', playing ? 'Pause' : 'Play');
+  }
+  $('play').addEventListener('click', () => {
+    if (age() >= END_AGE) { build(); playing = true; }
+    else playing = !playing;
+    syncPlay();
+  });
+  $('stepBtn').addEventListener('click', () => {
+    playing = false; syncPlay();
+    if (age() >= END_AGE) return;
+    for (let i = 0; i < 12; i++) step(1 / 60);
+  });
+  $('restart').addEventListener('click', () => { build(); playing = true; syncPlay(); });
+  $('stim').addEventListener('click', () => { if (age() > 0.15 && age() < END_AGE) for (const e of EXP) if (e.on) stimulate(e); });
+  document.querySelectorAll('input[name=speed]').forEach(r => r.addEventListener('change', () => { speed = +r.value; }));
+  $('showGlia').addEventListener('change', e => { show.glia = e.target.checked; });
+  $('showSignals').addEventListener('change', e => { show.signals = e.target.checked; });
+  $('showTags').addEventListener('change', e => { show.tags = e.target.checked; });
+  $('showChart').addEventListener('change', e => { $('chartbox').hidden = !e.target.checked; });
+
+  function updateUI() {
+    const a = Math.min(age(), END_AGE), n = count();
+    $('age').textContent = a.toFixed(1);
+    $('phase').textContent = phaseName(a);
+    $('sNow').textContent = n;
+    $('sPeak').textContent = peak;
+    $('sPruned').textContent = pruned;
+    $('sPct').textContent = peak && a > 2 ? Math.round(100 * n / peak) + '%' : '–';
+  }
+
+  build(); syncPlay(); resize();
+  let last = performance.now();
+  function frame(now) {
+    const realDt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (playing) {
+      let simDt = realDt * speed;
+      while (simDt > 1e-6) { const h = Math.min(1 / 60, simDt); step(h); simDt -= h; }
+      if (age() >= END_AGE) { playing = false; syncPlay(); }
+    }
+    draw(); drawChart(); updateUI();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
