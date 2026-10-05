@@ -1,0 +1,689 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>The Salty Banana</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shantell+Sans:wght@400;600;800&display=swap">
+<style>
+/* Layout: a teacher's notebook page. One big picture, one short caption, Back/Next. Nothing else competes. */
+:root{
+  --paper:#fbf7ee;
+  --ink:#26221d;
+  --soft:#6d655a;
+  --rule:#d9cfbd;
+  --na:#ff9126;
+  --k:#9b5fe8;
+  --hand:"Shantell Sans","Comic Sans MS","Segoe Print",system-ui,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{background:var(--paper);color:var(--ink)}
+body{font-family:var(--hand);font-size:18px;line-height:1.5;padding-inline:16px;padding-block:24px 48px}
+.wrap{max-width:980px;margin:0 auto;display:grid;gap:16px}
+h1{font-weight:800;font-size:clamp(28px,4.5vw,40px);line-height:1.05;margin:0}
+.stage{border:2.5px solid var(--ink);border-radius:10px;overflow:hidden;background:#8fd3e8}
+#stage{display:block;width:100%;aspect-ratio:1000/560;max-width:100%}
+.caption{display:grid;gap:14px}
+#text{margin:0;font-size:clamp(19px,2.3vw,23px);line-height:1.45;max-width:46ch;min-height:3em}
+.na{color:#d36a00;font-weight:800}.k{color:#7a3fd0;font-weight:800}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.btn{font:inherit;font-size:17px;font-weight:600;cursor:pointer;border:2px solid var(--ink);background:var(--paper);color:var(--ink);border-radius:8px;padding:6px 16px}
+.btn.next{background:var(--ink);color:var(--paper)}
+.btn.do{background:#ffd84a}
+.btn:disabled{opacity:.35;cursor:default}
+.btn:focus-visible{outline:3px solid var(--na);outline-offset:2px}
+.pulse{animation:nudge 1s ease-in-out infinite}
+@keyframes nudge{50%{transform:translateX(4px)}}
+.steps{display:flex;gap:5px;margin-left:auto;align-items:center}
+.steps button{width:14px;height:14px;border-radius:50%;border:2px solid var(--ink);background:transparent;padding:0;cursor:pointer}
+.steps button.on{background:var(--ink)}
+.steps span{font-size:14px;color:var(--soft);margin-right:6px}
+#arrival{font-size:16px;color:var(--soft)}
+.graph{border-top:2px dashed var(--rule);padding-top:12px}
+.graph p{margin:0 0 4px;font-size:15px;color:var(--soft)}
+#scope{display:block;width:100%;max-width:640px;aspect-ratio:640/220}
+@media (max-width:560px){ .steps{margin-left:0;width:100%} body{font-size:16px} }
+@media (prefers-reduced-motion:reduce){ .pulse{animation:none} }
+</style>
+
+<div class="wrap">
+  <h1>The Salty Banana</h1>
+  <div class="stage"><canvas id="stage" aria-label="Animation of the current step"></canvas></div>
+  <div class="caption">
+    <p id="text" aria-live="polite"></p>
+    <div class="row" id="tools">
+      <button class="btn do" id="pokeSoft" type="button">Poke gently</button>
+      <button class="btn do" id="pokeHard" type="button">Poke hard</button>
+      <button class="btn do" id="fire" type="button">Fire!</button>
+      <label id="myelinWrap" style="display:flex;gap:6px;align-items:center;font-size:17px"><input type="checkbox" id="myelin"> add myelin</label>
+      <span id="arrival"></span>
+    </div>
+    <div class="row">
+      <button class="btn" id="prev" type="button">← Back</button>
+      <button class="btn next" id="next" type="button">Next →</button>
+      <div class="steps" id="steps"><span id="count"></span></div>
+    </div>
+  </div>
+  <div class="graph" id="graph">
+    <p>Voltage inside the neuron</p>
+    <canvas id="scope" aria-label="Graph of voltage over time"></canvas>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+const W = 1000, H = 560;
+const MT = 262, MB = 318;
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const cv = document.getElementById("stage"), ctx = cv.getContext("2d");
+const sc = document.getElementById("scope"), sx = sc.getContext("2d");
+const $ = id => document.getElementById(id);
+const C = { na:"#ff9126", k:"#9b5fe8", ink:"#26221d", hot:"#ff4f5e" };
+const HAND = '"Shantell Sans","Comic Sans MS",system-ui,sans-serif';
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const lerp = (a,b,t) => a + (b-a)*t;
+const ease = t => t<.5 ? 2*t*t : 1 - Math.pow(-2*t+2,2)/2;
+const rnd = (a,b) => a + Math.random()*(b-a);
+function hex(h){ const n=parseInt(h.slice(1),16); return [n>>16&255, n>>8&255, n&255]; }
+function mix(a,b,t){ const A=hex(a),B=hex(b); return `rgb(${A.map((v,i)=>Math.round(lerp(v,B[i],t))).join(",")})`; }
+function fmtV(v){ const r=Math.round(v); return (r<0?"−":r>0?"+":"")+Math.abs(r)+" mV"; }
+
+let SHOW = [];
+/* ---------- canvas sizing ---------- */
+function fit(c, x, w, h){
+  const dpr = Math.min(2, window.devicePixelRatio||1);
+  const cw = c.clientWidth || w;
+  c.width = Math.round(cw*dpr); c.height = Math.round(cw*h/w*dpr);
+  x.setTransform(c.width/w,0,0,c.width/w,0,0);
+}
+function resize(){ fit(cv,ctx,W,H); fit(sc,sx,640,220); }
+addEventListener("resize", resize);
+
+/* ---------- Hodgkin–Huxley neuron (classic 1952 squid parameters; Na activation shifted +6 mV so threshold sits near −55 mV) ---------- */
+const SHIFT = 6;
+function rates(V){
+  const Vm = V - SHIFT;
+  const am = Math.abs(Vm+40)<1e-6 ? 1 : 0.1*(Vm+40)/(1-Math.exp(-(Vm+40)/10));
+  const bm = 4*Math.exp(-(Vm+65)/18);
+  const ah = 0.07*Math.exp(-(V+65)/20), bh = 1/(1+Math.exp(-(V+35)/10));
+  const an = Math.abs(V+55)<1e-6 ? 0.1 : 0.01*(V+55)/(1-Math.exp(-(V+55)/10));
+  const bn = 0.125*Math.exp(-(V+65)/80);
+  return [am,bm,ah,bh,an,bn];
+}
+const G = { na:120, k:36, l:0.3, ENa:50, EK:-77, EL:-54.387 };
+function restState(){
+  let V=-65, r=rates(V), m=r[0]/(r[0]+r[1]), h=r[2]/(r[2]+r[3]), n=r[4]/(r[4]+r[5]);
+  for(let i=0;i<40000;i++){ r=rates(V);
+    V += 0.005*(-G.na*m**3*h*(V-G.ENa) - G.k*n**4*(V-G.EK) - G.l*(V-G.EL));
+    m += 0.005*(r[0]*(1-m)-r[1]*m); h += 0.005*(r[2]*(1-h)-r[3]*h); n += 0.005*(r[4]*(1-n)-r[5]*n); }
+  return {V,m,h,n};
+}
+const REST = restState();
+const toDisp = V => V - REST.V - 70;           // display scale: rest = −70 mV
+const IK_REST = G.k*REST.n**4*(REST.V-G.EK);
+
+const N = { V:REST.V, m:REST.m, h:REST.h, n:REST.n, t:0, dV:0, INa:0, IK:0, Isyn:0, gs:0, pokes:[], trace:[], lastRec:-1, spk:false };
+function resetNeuron(keepTrace){
+  Object.assign(N, {V:REST.V, m:REST.m, h:REST.h, n:REST.n, dV:0, INa:0, IK:0, Isyn:0, gs:0, pokes:[], spk:false});
+  if(!keepTrace){ N.trace=[]; }
+}
+function stepNeuron(dt){
+  let gs=0;
+  for(const p of N.pokes){ const s=(N.t-p.t)/1.0; if(s>0 && s<12) gs += p.g*s*Math.exp(1-s); }
+  const r=rates(N.V);
+  N.INa = G.na*N.m**3*N.h*(N.V-G.ENa);
+  N.IK  = G.k*N.n**4*(N.V-G.EK);
+  N.Isyn = gs*(N.V-0);            // glutamate (AMPA-like) channel, reversal ≈ 0 mV, mostly Na⁺ in
+  N.gs = gs;
+  const dV = -N.INa - N.IK - G.l*(N.V-G.EL) - N.Isyn;
+  N.V += dt*dV; N.dV = dV;
+  N.m += dt*(r[0]*(1-N.m)-r[1]*N.m); N.h += dt*(r[2]*(1-N.h)-r[3]*N.h); N.n += dt*(r[4]*(1-N.n)-r[5]*N.n);
+  N.t += dt;
+  N.pokes = N.pokes.filter(p => N.t-p.t < 12);
+  if(N.t - N.lastRec >= 0.05){ N.trace.push([N.t, toDisp(N.V)]); N.lastRec=N.t; while(N.trace.length && N.trace[0][0] < N.t-40) N.trace.shift(); }
+}
+function phaseOf(Vd, dV){
+  if(Vd > -40) N.spk = true;
+  if(N.spk && Vd < -71) N.spk = false;
+  if(dV > 6 && Vd > -60) return ["Rising phase: Na⁺ rushing in", C.hot];
+  if(N.spk && dV < 0) return ["Falling phase: K⁺ rushing out", "#7f45d6"];
+  if(Vd < -71) return ["Undershoot: refractory", "#5a3fa8"];
+  if(Vd > -68.5) return ["Depolarizing (graded)", "#c45f00"];
+  return ["Resting", C.ink];
+}
+
+/* ---------- guided script for chapters 5–8 ---------- */
+const S = { active:false, reached:new Set(), tDown:0, peaked:false };
+function startScript(){
+  resetNeuron(true);
+  S.active = true; S.reached = new Set(); S.peaked=false;
+  const t0 = N.t;
+  [1.6, 2.8, 4.0].forEach(dt => schedulePoke(0.15, t0+dt));
+}
+function checkMilestones(){
+  if(!S.active) return null;
+  const Vd = toDisp(N.V);
+  let hit = null;
+  if(!S.reached.has("thr") && Vd >= -55 && N.dV > 0){ S.reached.add("thr"); hit="thr"; }
+  else if(S.reached.has("thr") && !S.reached.has("peak") && Vd > 0 && N.dV <= 0){ S.reached.add("peak"); hit="peak"; }
+  else if(S.reached.has("peak") && !S.reached.has("down") && Vd <= -70){ S.reached.add("down"); S.tDown=N.t; hit="down"; }
+  else if(S.reached.has("down") && !S.reached.has("end") && N.t - S.tDown > 14){ S.reached.add("end"); hit="end"; }
+  return hit;
+}
+function fastForwardTo(ms){
+  startScript();
+  let guard=0;
+  while(!S.reached.has(ms) && guard++ < 400000){ stepNeuron(0.005); checkMilestones(); }
+  N.pokes.forEach(p => p.vis = true);
+  resetParticles();
+}
+
+/* ---------- particles ---------- */
+const OUT=[30, MT-16], IN=[MB+16, H-22];
+let P = [], NT = [], TOK = { naV:0, kV:0, lig:0, leak:0, pump:0 };
+const BASE = { out:{na:34, k:2}, in:{k:34, na:3} };
+const CH_X = { kleak:120, pump:270, lig:440, nav:625, kv:805 };
+function spawn(sp, side){
+  const r = side==="out" ? OUT : IN;
+  return { sp, side, x:rnd(24,W-24), y:rnd(r[0],r[1]), vx:rnd(-20,20), vy:rnd(-20,20), tr:null, r: 8.5 };
+}
+function resetParticles(){
+  P=[]; NT=[];
+  for(const side of ["out","in"]) for(const [sp,n] of Object.entries(BASE[side])) for(let i=0;i<n;i++) P.push(spawn(sp,side));
+  for(const k in TOK) TOK[k]=0;
+}
+function count(sp, side){ return P.reduce((a,p)=>a+(p.sp===sp && p.side===side && !p.tr ? 1:0),0); }
+function transit(sp, from, x, viaPump){
+  let best=null, bd=1e9;
+  for(const p of P){ if(p.sp!==sp || p.side!==from || p.tr) continue;
+    const d=Math.abs(p.x-x)+Math.abs(p.y-(from==="out"?MT:MB))*0.6; if(d<bd){bd=d;best=p;} }
+  if(!best) return false;
+  const to = from==="out" ? "in" : "out";
+  const m1 = from==="out" ? MT-12 : MB+12, m2 = from==="out" ? MB+12 : MT-12;
+  const endY = to==="in" ? rnd(MB+40, MB+140) : rnd(MT-140, MT-40);
+  best.tr = { pts:[[best.x,best.y],[x,m1],[x,m2],[x+rnd(-90,90),endY]], t:0, dur: viaPump?1.1:0.8, to };
+  return true;
+}
+function stepParticles(dt){
+  for(const p of P){
+    if(p.tr){
+      const T=p.tr; T.t += dt/T.dur;
+      const k = clamp(T.t,0,1), seg = k<.4?0:k<.6?1:2, lt = seg===0?k/.4:seg===1?(k-.4)/.2:(k-.6)/.4;
+      const a=T.pts[seg], b=T.pts[seg+1], e=ease(lt);
+      p.x=lerp(a[0],b[0],e); p.y=lerp(a[1],b[1],e);
+      if(T.t>=1){ p.side=T.to; p.tr=null; p.vx=rnd(-15,15); p.vy=rnd(-15,15); }
+      continue;
+    }
+    p.vx += rnd(-1,1)*90*dt; p.vy += rnd(-1,1)*90*dt;
+    p.vx *= 0.985; p.vy *= 0.985;
+    const sp = Math.hypot(p.vx,p.vy); if(sp>34){ p.vx*=34/sp; p.vy*=34/sp; }
+    p.x += p.vx*dt; p.y += p.vy*dt;
+    const r = p.side==="out" ? OUT : IN;
+    if(p.x<16){p.x=16;p.vx=Math.abs(p.vx);} if(p.x>W-16){p.x=W-16;p.vx=-Math.abs(p.vx);}
+    if(p.y<r[0]){p.y=r[0];p.vy=Math.abs(p.vy);} if(p.y>r[1]){p.y=r[1];p.vy=-Math.abs(p.vy);}
+  }
+  for(const q of NT){ q.t += dt; }
+  NT = NT.filter(q => q.t < 1.6);
+}
+
+/* ---------- pokes (synaptic input) ---------- */
+let simRate = 4;  // simulated ms per real second (updated per frame)
+function schedulePoke(g, tSim){ N.pokes.push({ g, t:tSim, vis:false }); }
+function userPoke(g){
+  schedulePoke(g, N.t + 0.45*Math.max(simRate,1));
+}
+function updatePokeVisuals(){
+  for(const p of N.pokes){
+    if(p.vis) continue;
+    if(p.t - N.t < 0.45*Math.max(simRate,1)){
+      p.vis = true;
+      const n = Math.round(3 + p.g*30);
+      for(let i=0;i<n;i++) NT.push({ x0:CH_X.lig+rnd(-26,26), t:-i*0.04, x1:CH_X.lig+rnd(-14,14) });
+    }
+  }
+}
+
+/* ---------- channel accounting -> ions hopping across ---------- */
+function channelFlux(dtSim, dtReal, opts){
+  TOK.naV += Math.max(0,-N.INa)*dtSim*0.055;
+  TOK.kV  += Math.max(0, N.IK-IK_REST)*dtSim*0.055;
+  TOK.lig += Math.max(0,-N.Isyn)*dtSim*0.09;
+  while(TOK.naV>=1){ TOK.naV--; if(SHOW.includes("nav")) transit("na","out",CH_X.nav+rnd(-6,6)); }
+  while(TOK.kV>=1){ TOK.kV--; if(SHOW.includes("kv")) transit("k","in",CH_X.kv+rnd(-6,6)); }
+  while(TOK.lig>=1){ TOK.lig--; if(SHOW.includes("lig")) transit("na","out",CH_X.lig+rnd(-6,6)); }
+  TOK.leak += dtReal/1.6;
+  if(TOK.leak>=1){ TOK.leak=0; if(SHOW.includes("kleak") && count("k","out") < BASE.out.k+5) transit("k","in",CH_X.kleak); }
+  TOK.pump += dtReal/2.4;
+  if(TOK.pump>=1){ TOK.pump=0;
+    if(!SHOW.includes("pump")) return;
+    const extraNa = count("na","in") - BASE.in.na, extraK = count("k","out") - BASE.out.k;
+    for(let i=0;i<Math.min(3,Math.max(0,extraNa));i++) transit("na","in",CH_X.pump+rnd(-8,8),true);
+    for(let i=0;i<Math.min(2,Math.max(0,extraK));i++) transit("k","out",CH_X.pump+rnd(-8,8),true);
+  }
+}
+
+/* ---------- cable (axon) model ---------- */
+const NC = 120, NODE_EVERY = 12;
+const CB = { V:new Float64Array(NC), m:new Float64Array(NC), h:new Float64Array(NC), n:new Float64Array(NC), INa:new Float64Array(NC), IK:new Float64Array(NC),
+  act:[], cap:new Float64Array(NC), t:0, fireT:-1e9, arrive:null, myelin:false, probe:[], lastRec:0 };
+function isNode(i){ return i<4 || i>=NC-4 || i%NODE_EVERY<2; }
+function resetCable(){
+  for(let i=0;i<NC;i++){ CB.V[i]=REST.V; CB.m[i]=REST.m; CB.h[i]=REST.h; CB.n[i]=REST.n; CB.INa[i]=0; CB.IK[i]=0;
+    CB.act[i] = !CB.myelin || isNode(i); CB.cap[i] = CB.act[i] ? 1 : 0.05; }
+  CB.t=0; CB.fireT=-1e9; CB.arrive=null; CB.probe=[]; CB.lastRec=0;
+}
+const dVc = new Float64Array(NC);
+function stepCable(dt){
+  const k=20;
+  for(let i=0;i<NC;i++){
+    const V=CB.V[i], l=i>0?CB.V[i-1]:V, r=i<NC-1?CB.V[i+1]:V;
+    let I = k*(l-2*V+r);
+    if(CB.act[i]){
+      const R=rates(V), m=CB.m[i], h=CB.h[i], n=CB.n[i];
+      const ina=G.na*m*m*m*h*(V-G.ENa), ik=G.k*n*n*n*n*(V-G.EK);
+      CB.INa[i]=ina; CB.IK[i]=ik;
+      I += -ina - ik - G.l*(V-G.EL);
+      CB.m[i]=m+dt*(R[0]*(1-m)-R[1]*m); CB.h[i]=h+dt*(R[2]*(1-h)-R[3]*h); CB.n[i]=n+dt*(R[4]*(1-n)-R[5]*n);
+    } else { I += -0.02*(V-REST.V); CB.INa[i]=0; CB.IK[i]=0; }
+    if(i<3 && CB.t-CB.fireT>0 && CB.t-CB.fireT<0.5) I += 300;
+    dVc[i] = I/CB.cap[i];
+  }
+  for(let i=0;i<NC;i++) CB.V[i]+=dt*dVc[i];
+  CB.t+=dt;
+  if(CB.arrive===null && CB.fireT>-1 && toDisp(CB.V[NC-3])>0) CB.arrive = CB.t-CB.fireT;
+  if(CB.t-CB.lastRec>=0.05){ CB.lastRec=CB.t; CB.probe.push([CB.t, toDisp(CB.V[24]), toDisp(CB.V[96])]); while(CB.probe.length && CB.probe[0][0]<CB.t-30) CB.probe.shift(); }
+}
+function fireCable(){ CB.fireT = CB.t; CB.arrive=null; $("arrival").textContent=""; }
+
+function banana(x,y,L,ang,o={}){
+  const mood=o.mood||"chill";
+  ctx.save(); ctx.translate(x,y); ctx.rotate(ang||0); ctx.globalAlpha *= (o.alpha??1);
+  if(o.glow){ ctx.shadowColor="rgba(255,79,94,.9)"; ctx.shadowBlur=28*o.glow; }
+  ctx.beginPath();
+  ctx.moveTo(-L/2,-L*.05);
+  ctx.quadraticCurveTo(0,L*.44,L/2,-L*.05);
+  ctx.quadraticCurveTo(0,L*.1,-L/2,-L*.05);
+  ctx.closePath();
+  const g=ctx.createLinearGradient(0,-L*.05,0,L*.2);
+  g.addColorStop(0, o.fill||"#ffe679"); g.addColorStop(1, o.fill2||"#f4c22b");
+  ctx.fillStyle=g; ctx.fill(); ctx.shadowBlur=0;
+  ctx.lineWidth=Math.max(1.2,L*.018); ctx.strokeStyle="#26221d"; ctx.stroke();
+  // ridge line
+  ctx.beginPath(); ctx.moveTo(-L*.42,-L*.02); ctx.quadraticCurveTo(0,L*.33,L*.42,-L*.02); ctx.strokeStyle="rgba(185,134,26,.35)"; ctx.lineWidth=Math.max(1,L*.01); ctx.stroke();
+  // tips
+  ctx.fillStyle="#5c3b16"; ctx.beginPath(); ctx.arc(L/2-L*.01,-L*.05,L*.022,0,7); ctx.fill();
+  ctx.save(); ctx.translate(-L/2,-L*.05); ctx.rotate(-.5); ctx.fillStyle="#7a6a2a"; ctx.fillRect(-L*.07,-L*.02,L*.08,L*.04); ctx.restore();
+  // speckles
+  ctx.fillStyle="rgba(120,74,22,.45)";
+  [[-.3,.06],[.22,.1],[.05,.17],[-.12,.15],[.33,.03]].forEach(([a,b])=>{ctx.beginPath();ctx.arc(L*a,L*b,L*.009,0,7);ctx.fill();});
+  // face
+  const fx=0, fy=L*.115, e=L*.055;
+  ctx.fillStyle="rgba(255,120,120,.45)";
+  ctx.beginPath(); ctx.arc(fx-e*1.7,fy+L*.035,L*.022,0,7); ctx.arc(fx+e*1.7,fy+L*.035,L*.022,0,7); ctx.fill();
+  ctx.strokeStyle="#2a1a08"; ctx.fillStyle="#2a1a08"; ctx.lineWidth=Math.max(1,L*.012); ctx.lineCap="round";
+  if(mood==="chill"){
+    ctx.beginPath(); ctx.roundRect(fx-e*1.45,fy-L*.03,e*1.25,L*.04,L*.012); ctx.roundRect(fx+e*.2,fy-L*.03,e*1.25,L*.04,L*.012); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(fx-e*.2,fy-L*.022); ctx.lineTo(fx+e*.2,fy-L*.022); ctx.stroke();
+    ctx.fillStyle="rgba(255,255,255,.5)"; ctx.fillRect(fx-e*1.3,fy-L*.026,e*.35,L*.008);
+    ctx.beginPath(); ctx.arc(fx,fy+L*.035,L*.03,.2,Math.PI-.2); ctx.stroke();
+  } else if(mood==="curious"){
+    ctx.beginPath(); ctx.arc(fx-e*.8,fy-L*.01,L*.012,0,7); ctx.arc(fx+e*.8,fy-L*.01,L*.012,0,7); ctx.fill();
+    ctx.beginPath(); ctx.arc(fx,fy+L*.04,L*.012,0,7); ctx.stroke();
+  } else if(mood==="zap"){
+    ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(fx-e*.85,fy-L*.012,L*.024,0,7); ctx.arc(fx+e*.85,fy-L*.012,L*.024,0,7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle="#2a1a08"; ctx.beginPath(); ctx.arc(fx-e*.85,fy-L*.012,L*.01,0,7); ctx.arc(fx+e*.85,fy-L*.012,L*.01,0,7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(fx,fy+L*.045,L*.02,L*.026,0,0,7); ctx.fill();
+  } else if(mood==="tired"){
+    ctx.beginPath(); ctx.moveTo(fx-e*1.2,fy-L*.01); ctx.lineTo(fx-e*.4,fy-L*.01); ctx.moveTo(fx+e*.4,fy-L*.01); ctx.lineTo(fx+e*1.2,fy-L*.01); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(fx-L*.025,fy+L*.045); ctx.quadraticCurveTo(fx,fy+L*.03,fx+L*.025,fy+L*.045); ctx.stroke();
+    ctx.fillStyle="#7cc8ff"; ctx.beginPath(); ctx.ellipse(fx+e*1.8,fy-L*.04,L*.01,L*.016,0,0,7); ctx.fill();
+  }
+  ctx.restore();
+}
+function sun(x,y,r,T){
+  ctx.save(); ctx.translate(x,y);
+  ctx.fillStyle="rgba(255,214,74,.35)"; ctx.beginPath(); ctx.arc(0,0,r*1.7,0,7); ctx.fill();
+  ctx.rotate(T*.15); ctx.strokeStyle="#ffcf3a"; ctx.lineWidth=5; ctx.lineCap="round";
+  for(let i=0;i<12;i++){ ctx.rotate(Math.PI/6); ctx.beginPath(); ctx.moveTo(r*1.25,0); ctx.lineTo(r*1.6+Math.sin(T*2+i)*4,0); ctx.stroke(); }
+  ctx.restore();
+  ctx.fillStyle="#ffd23f"; ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fill();
+}
+
+function drawFace(mood, L){
+  const e=L*.055, fy=0;
+  ctx.fillStyle="rgba(255,120,120,.45)"; ctx.beginPath(); ctx.arc(-e*1.9,fy+L*.04,L*.03,0,7); ctx.arc(e*1.9,fy+L*.04,L*.03,0,7); ctx.fill();
+  ctx.strokeStyle="#2a1a08"; ctx.fillStyle="#2a1a08"; ctx.lineWidth=2.4; ctx.lineCap="round";
+  if(mood==="chill"){ ctx.beginPath(); ctx.roundRect(-e*1.6,-L*.035,e*1.35,L*.05,4); ctx.roundRect(e*.25,-L*.035,e*1.35,L*.05,4); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-e*.3,-L*.025); ctx.lineTo(e*.3,-L*.025); ctx.stroke(); ctx.beginPath(); ctx.arc(0,L*.04,L*.04,.2,Math.PI-.2); ctx.stroke(); }
+  else if(mood==="curious"){ ctx.beginPath(); ctx.arc(-e*.9,-L*.01,3.5,0,7); ctx.arc(e*.9,-L*.01,3.5,0,7); ctx.fill(); ctx.beginPath(); ctx.arc(0,L*.05,4,0,7); ctx.stroke(); }
+  else if(mood==="zap"){ ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(-e*.95,-L*.01,8,0,7); ctx.arc(e*.95,-L*.01,8,0,7); ctx.fill(); ctx.stroke(); ctx.fillStyle="#2a1a08"; ctx.beginPath(); ctx.arc(-e*.95,-L*.01,3.5,0,7); ctx.arc(e*.95,-L*.01,3.5,0,7); ctx.fill(); ctx.beginPath(); ctx.ellipse(0,L*.07,6,8,0,0,7); ctx.fill(); }
+  else { ctx.beginPath(); ctx.moveTo(-e*1.3,-L*.01); ctx.lineTo(-e*.5,-L*.01); ctx.moveTo(e*.5,-L*.01); ctx.lineTo(e*1.3,-L*.01); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-6,L*.06); ctx.quadraticCurveTo(0,L*.045,6,L*.06); ctx.stroke(); ctx.fillStyle="#7cc8ff"; ctx.beginPath(); ctx.ellipse(e*2,-L*.05,3,5,0,0,7); ctx.fill(); }
+}
+
+
+/* ---------- hand-lettered notes ---------- */
+function note(text,x,y,o={}){
+  ctx.save();
+  ctx.font=`${o.w||600} ${o.size||19}px ${HAND}`; ctx.textAlign=o.align||"left"; ctx.textBaseline="middle";
+  ctx.lineJoin="round"; ctx.strokeStyle=o.halo||"rgba(255,255,255,.9)"; ctx.lineWidth=6; ctx.strokeText(text,x,y);
+  ctx.fillStyle=o.color||C.ink; ctx.fillText(text,x,y); ctx.restore();
+}
+function arrow(x0,y0,x1,y1,bend=30){
+  const mx=(x0+x1)/2+bend, my=(y0+y1)/2-bend*.4;
+  ctx.save(); ctx.strokeStyle=C.ink; ctx.lineWidth=2.2; ctx.lineCap="round";
+  ctx.beginPath(); ctx.moveTo(x0,y0); ctx.quadraticCurveTo(mx,my,x1,y1); ctx.stroke();
+  const a=Math.atan2(y1-my,x1-mx);
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x1-11*Math.cos(a-.45),y1-11*Math.sin(a-.45));
+  ctx.moveTo(x1,y1); ctx.lineTo(x1-11*Math.cos(a+.45),y1-11*Math.sin(a+.45)); ctx.stroke(); ctx.restore();
+}
+function moodFor(Vd, dV){
+  if(Vd>-40) N.spk=true; if(N.spk && Vd<-71) N.spk=false;
+  if(dV>6 && Vd>-60 || Vd>-20) return "zap";
+  if(Vd<-71.5 || (N.spk && dV<0)) return "tired";
+  if(Vd>-68.5) return "curious";
+  return "chill";
+}
+
+/* ---------- view: brain ---------- */
+const BRAIN_SPARK = Array.from({length:30},()=>({a:rnd(0,7),r:rnd(0,1),ph:rnd(0,6)}));
+function brainPath(){
+  ctx.beginPath(); ctx.moveTo(300,330);
+  ctx.bezierCurveTo(240,300,250,170,350,140); ctx.bezierCurveTo(400,85,520,80,580,110);
+  ctx.bezierCurveTo(660,90,760,140,760,220); ctx.bezierCurveTo(800,280,740,350,660,345);
+  ctx.bezierCurveTo(620,380,560,360,540,345); ctx.bezierCurveTo(480,370,380,370,300,330); ctx.closePath();
+}
+function drawBrain(T){
+  ctx.fillStyle="#fbf1e2"; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle="#f3cba8"; ctx.strokeStyle=C.ink; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.ellipse(520,250,330,230,0,0,7); ctx.fill(); ctx.stroke();
+  ctx.save(); brainPath(); ctx.fillStyle="#ffa8b9"; ctx.fill(); ctx.clip();
+  ctx.strokeStyle="#d9708a"; ctx.lineWidth=4; ctx.lineCap="round";
+  for(let k=0;k<11;k++){ ctx.beginPath(); for(let x=230;x<=800;x+=8){ const y=110+k*24+Math.sin(x/22+k*1.7)*9+Math.sin(x/55+k)*6; x===230?ctx.moveTo(x,y):ctx.lineTo(x,y);} ctx.stroke(); }
+  for(const s of BRAIN_SPARK){ const f=Math.max(0,Math.sin(T*3+s.ph*3)); if(f<.75) continue;
+    ctx.fillStyle=`rgba(255,250,190,${(f-.75)*4})`; ctx.beginPath(); ctx.arc(520+Math.cos(s.a)*200*s.r, 230+Math.sin(s.a)*110*s.r, 4+f*6,0,7); ctx.fill(); }
+  ctx.restore();
+  brainPath(); ctx.strokeStyle=C.ink; ctx.lineWidth=3; ctx.stroke();
+  ctx.fillStyle="#f797aa"; ctx.beginPath(); ctx.ellipse(700,350,62,36,-.2,0,7); ctx.fill(); ctx.stroke();
+}
+
+/* ---------- view: sea of bananas ---------- */
+const BAN = [
+  {x:180,y:300,L:120,a:-.15},{x:360,y:255,L:105,a:.2},{x:520,y:350,L:170,a:-.05},{x:700,y:255,L:110,a:.1},
+  {x:860,y:335,L:120,a:-.2},{x:280,y:450,L:115,a:.1},{x:660,y:475,L:120,a:-.15},{x:870,y:480,L:100,a:.25},{x:110,y:470,L:95,a:.05}
+];
+const LINKS = [[0,1],[1,2],[2,3],[3,4],[5,2],[2,6],[6,7],[8,5],[0,5],[3,7]];
+const SEA_NA = Array.from({length:36},()=>({x:rnd(0,W),y:rnd(215,H),ph:rnd(0,6)}));
+let oceanFire={link:0,t:0}, banGlow=new Array(BAN.length).fill(0);
+const banPos=(b,T,i)=>[b.x+Math.sin(T*.6+i)*6, b.y+Math.sin(T*1.1+i*1.3)*5];
+function drawOcean(T,dt){
+  ctx.fillStyle="#c4ecf7"; ctx.fillRect(0,0,W,200);
+  sun(110,80,38,T);
+  ctx.fillStyle="#38afcd"; ctx.strokeStyle=C.ink; ctx.lineWidth=2.5;
+  ctx.beginPath(); ctx.moveTo(0,190); for(let x=0;x<=W;x+=10) ctx.lineTo(x,188+Math.sin(x/40+T*1.4)*5);
+  ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.fill();
+  ctx.beginPath(); for(let x=0;x<=W;x+=10){ const y=188+Math.sin(x/40+T*1.4)*5; x?ctx.lineTo(x,y):ctx.moveTo(x,y);} ctx.stroke();
+  ctx.strokeStyle="rgba(255,255,255,.22)"; ctx.lineWidth=2;
+  for(let k=0;k<5;k++){ ctx.beginPath(); for(let x=0;x<=W;x+=12){ const y=240+k*65+Math.sin(x/50+T+k)*6; x?ctx.lineTo(x,y):ctx.moveTo(x,y);} ctx.stroke(); }
+  ctx.fillStyle=C.na;
+  for(const s of SEA_NA){ ctx.beginPath(); ctx.arc((s.x+T*6)%W, s.y+Math.sin(T+s.ph)*6, 3.5,0,7); ctx.fill(); }
+  const pos=BAN.map((b,i)=>banPos(b,T,i));
+  oceanFire.t+=dt*1.5;
+  if(oceanFire.t>=1){ const b=LINKS[oceanFire.link][1]; banGlow[b]=1; oceanFire.t=0;
+    const nx=LINKS.map((_,i)=>i).filter(i=>LINKS[i][0]===b);
+    oceanFire.link = nx.length ? nx[Math.floor(Math.random()*nx.length)] : Math.floor(Math.random()*LINKS.length); }
+  const [la,lb]=LINKS[oceanFire.link], e=oceanFire.t;
+  ctx.fillStyle="#fffbe0"; ctx.shadowColor="#ffef7a"; ctx.shadowBlur=14;
+  ctx.beginPath(); ctx.arc(lerp(pos[la][0],pos[lb][0],e), lerp(pos[la][1],pos[lb][1],e), 6,0,7); ctx.fill(); ctx.shadowBlur=0;
+  BAN.forEach((b,i)=>{ banGlow[i]=Math.max(0,banGlow[i]-dt*1.5);
+    banana(pos[i][0],pos[i][1],b.L,b.a+Math.sin(T+i)*.05,{mood:banGlow[i]>.4?"zap":"chill",glow:banGlow[i]}); });
+  note("our neuron", 600, 440, {size:20}); arrow(598,430,560,395,-10);
+  note("salty sea (lots of Na⁺)", 640, 222, {size:18});
+}
+
+/* ---------- view: membrane close-up ---------- */
+const NAMES = { kleak:["K⁺ leak",""], pump:["pump","3 Na⁺ out, 2 K⁺ in"], lig:["signal door",""], nav:["Na⁺ door",""], kv:["K⁺ door",""] };
+function drawMembrane(T){
+  ctx.fillStyle="#8fd3e8"; ctx.fillRect(0,0,W,MT);
+  ctx.strokeStyle="rgba(255,255,255,.25)"; ctx.lineWidth=2;
+  for(let k=0;k<4;k++){ ctx.beginPath(); for(let x=0;x<=W;x+=14){ const y=50+k*55+Math.sin(x/45+(REDUCED?0:T)*1.3+k*2)*6; x?ctx.lineTo(x,y):ctx.moveTo(x,y);} ctx.stroke(); }
+  ctx.fillStyle="#fff0b8"; ctx.fillRect(0,MB,W,H-MB);
+  if(SHOW.includes("lig")){
+    const tx=CH_X.lig;
+    ctx.fillStyle="#ffe07a"; ctx.strokeStyle=C.ink; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.moveTo(tx-22,-5); ctx.lineTo(tx-22,40); ctx.bezierCurveTo(tx-60,50,tx-60,95,tx,96); ctx.bezierCurveTo(tx+60,95,tx+60,50,tx+22,40); ctx.lineTo(tx+22,-5); ctx.fill(); ctx.stroke();
+    note("neighbour neuron", tx+64, 40, {size:17});
+    for(const q of NT){ if(q.t<0) continue; const k=clamp(q.t/0.45,0,1);
+      ctx.globalAlpha = q.t>1.1 ? Math.max(0,1-(q.t-1.1)/.5) : 1;
+      ctx.fillStyle="#2f7cff"; ctx.beginPath(); ctx.arc(lerp(q.x0,q.x1,k), lerp(100,MT-24,ease(k)),4,0,7); ctx.fill(); ctx.globalAlpha=1; }
+  }
+  // charge layer
+  const Vd=toDisp(N.V), a=clamp(Math.abs(Vd)/70,0,1);
+  ctx.font=`800 20px ${HAND}`; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.globalAlpha=a;
+  for(let x=40;x<W;x+=64){
+    ctx.fillStyle=Vd<0?"#d33b2c":"#2b4aa8"; ctx.fillText(Vd<0?"+":"−", x, MT-10);
+    ctx.fillStyle=Vd<0?"#2b4aa8":"#d33b2c"; ctx.fillText(Vd<0?"−":"+", x+32, MB+11);
+  }
+  ctx.globalAlpha=1; ctx.textAlign="left";
+  // the peel
+  ctx.fillStyle="#ffd84a"; ctx.fillRect(0,MT,W,MB-MT);
+  ctx.strokeStyle=C.ink; ctx.lineWidth=2.5;
+  ctx.beginPath(); ctx.moveTo(0,MT); ctx.lineTo(W,MT); ctx.moveTo(0,MB); ctx.lineTo(W,MB); ctx.stroke();
+  ctx.fillStyle="rgba(110,70,20,.55)";
+  for(let i=0;i<14;i++){ const x=(i*173+40)%W; ctx.beginPath(); ctx.ellipse(x,MT+14+(i*37)%28,4,2.5,0,0,7); ctx.fill(); }
+  // channels
+  const mOpen=clamp((N.m-.12)/.55,0,1), inact=clamp((.5-N.h)/.38,0,1), nOpen=clamp((N.n-.33)/.32,0,1), lOpen=clamp(N.gs/.1,0,1);
+  if(SHOW.includes("kleak")) drawChannel("kleak",{open:1,tint:"#d9c2fa"});
+  if(SHOW.includes("pump")) drawPump(T);
+  if(SHOW.includes("lig")) drawChannel("lig",{open:lOpen,tint:"#bcd4ff",gate:true,state:lOpen>.3?"open":"closed"});
+  if(SHOW.includes("nav")) drawChannel("nav",{open:mOpen,tint:"#ffd0a0",gate:true,ball:inact,state:inact>.5?"plugged":mOpen>.5?"open!":"closed"});
+  if(SHOW.includes("kv")) drawChannel("kv",{open:nOpen,tint:"#d9c2fa",gate:true,state:nOpen>.5?"open!":"closed"});
+  for(const p of P) drawIon(p);
+  note("OUTSIDE  ·  salty sea", 18, 26, {size:18});
+  note("INSIDE  ·  banana", 18, H-24, {size:18});
+  // mood + voltage
+  ctx.fillStyle="#fffdf6"; ctx.strokeStyle=C.ink; ctx.lineWidth=2.5;
+  ctx.beginPath(); ctx.roundRect(W-176,12,162,132,10); ctx.fill(); ctx.stroke();
+  banana(W-95,46,108,0,{mood:moodFor(Vd,N.dV)});
+  ctx.font=`800 30px ${HAND}`; ctx.textAlign="center"; ctx.fillStyle = Vd>-50?"#d33b2c":Vd<-71.5?"#6b3fd0":C.ink;
+  ctx.fillText(fmtV(Vd), W-95, 116); ctx.textAlign="left";
+  if(held){ note("paused · press Next", W/2, H-26, {align:"center", size:20, w:800}); }
+}
+function drawChannel(key,o){
+  const x=CH_X[key], gap=6+o.open*12;
+  ctx.fillStyle=o.tint; ctx.strokeStyle=C.ink; ctx.lineWidth=2.5;
+  ctx.beginPath(); ctx.roundRect(x-gap-22,MT-12,22,MB-MT+24,10); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.roundRect(x+gap,MT-12,22,MB-MT+24,10); ctx.fill(); ctx.stroke();
+  if(o.gate){ ctx.save(); ctx.translate(x-gap,MT-2); ctx.rotate(-o.open*1.35); ctx.fillStyle=C.ink; ctx.beginPath(); ctx.roundRect(0,-3,gap*2+2,6,3); ctx.fill(); ctx.restore(); }
+  if(o.ball!==undefined){
+    const bx=x+gap+14-o.ball*(gap+14), by=MB+34-o.ball*24;
+    ctx.strokeStyle=C.ink; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x+gap+12,MB+10); ctx.quadraticCurveTo(x+gap+26,MB+36,bx,by); ctx.stroke();
+    ctx.fillStyle="#7a4fd0"; ctx.beginPath(); ctx.arc(bx,by,8,0,7); ctx.fill(); ctx.stroke();
+  }
+  note(NAMES[key][0], x, MB+72, {align:"center", size:19, w:800});
+  if(o.state) note(o.state, x, MB+98, {align:"center", size:16, w:400});
+}
+function drawPump(T){
+  const x=CH_X.pump, cyc=(T/2.4)%1, out=cyc>.5;
+  ctx.fillStyle="#b6e6bf"; ctx.strokeStyle=C.ink; ctx.lineWidth=2.5;
+  ctx.beginPath(); ctx.roundRect(x-38,MT-14,76,MB-MT+28,18); ctx.fill(); ctx.stroke();
+  ctx.fillStyle="#f2fff4"; ctx.beginPath(); if(out) ctx.ellipse(x,MT+6,20,22,0,0,7); else ctx.ellipse(x,MB-6,20,22,0,0,7); ctx.fill();
+  if((cyc%.5)<.38){ const cy=out?MT+8:MB-8;
+    (out?[[-7,0],[7,0]]:[[-9,-3],[9,-3],[0,9]]).forEach(([dx,dy])=>{ ctx.fillStyle=out?C.k:C.na; ctx.beginPath(); ctx.arc(x+dx,cy+dy,5.5,0,7); ctx.fill(); }); }
+  note(NAMES.pump[0], x, MB+72, {align:"center", size:19, w:800});
+  note(NAMES.pump[1], x, MB+98, {align:"center", size:16, w:400});
+}
+function drawIon(p){
+  ctx.fillStyle=C[p.sp]; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fill();
+  ctx.fillStyle="#fff"; ctx.font=`800 10px ${HAND}`; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText(p.sp==="na"?"Na":"K", p.x, p.y+.5); ctx.textAlign="left";
+}
+
+/* ---------- view: axon ---------- */
+const AX0=215, AX1=935, AY=290;
+const axX=i=>AX0+i*(AX1-AX0)/(NC-1), axY=x=>AY+Math.sin((x-AX0)/130)*10;
+function vColor(Vd){ return Vd>=-70 ? mix("#ffd84a","#ff3b4f",clamp((Vd+70)/90,0,1)) : mix("#ffd84a","#8d5cf0",clamp((-70-Vd)/10,0,1)); }
+function drawAxon(T){
+  ctx.fillStyle="#8fd3e8"; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle=C.ink; ctx.lineCap="round";
+  [[-1,-1],[-1,0],[-1,1],[-.4,-1.2],[-.4,1.2]].forEach(([dx,dy])=>{ const ex=150+dx*120, ey=AY+dy*95;
+    ctx.lineWidth=5; ctx.beginPath(); ctx.moveTo(150,AY); ctx.quadraticCurveTo(150+dx*60,AY+dy*30,ex,ey); ctx.stroke(); });
+  ctx.fillStyle=C.ink; ctx.fillRect(AX0-2,AY-16,AX1-AX0+4,32);
+  for(let i=0;i<NC-1;i++){ const x0=axX(i), x1=axX(i+1);
+    ctx.strokeStyle=vColor(toDisp(CB.V[i])); ctx.lineWidth=26; ctx.lineCap="butt";
+    ctx.beginPath(); ctx.moveTo(x0,AY); ctx.lineTo(x1+.8,AY); ctx.stroke(); }
+  ctx.lineCap="round";
+  [-36,0,36].forEach(dy=>{ ctx.strokeStyle=C.ink; ctx.lineWidth=3; ctx.fillStyle=vColor(toDisp(CB.V[NC-1]));
+    ctx.beginPath(); ctx.moveTo(AX1,AY); ctx.lineTo(AX1+26,AY+dy); ctx.stroke(); ctx.beginPath(); ctx.arc(AX1+30,AY+dy,10,0,7); ctx.fill(); ctx.stroke(); });
+  if(CB.myelin){
+    const cols=["#ff9fbd","#6fe3cb","#c3f27c","#ffbe5c"]; let i=0,n=0;
+    while(i<NC){ if(isNode(i)){i++;continue;} let j=i; while(j<NC&&!isNode(j)) j++;
+      const x0=axX(i)-2, x1=axX(j-1)+2;
+      ctx.fillStyle=cols[n%4]; ctx.strokeStyle=C.ink; ctx.lineWidth=2.5; ctx.beginPath(); ctx.roundRect(x0,AY-22,x1-x0,44,16); ctx.fill(); ctx.stroke();
+      n++; i=j; }
+    note("myelin", axX(42), AY-46, {align:"center", size:19});
+  }
+  for(let i=0;i<NC;i+=2){ const x=axX(i), ina=Math.min(1,-CB.INa[i]/220), ik=Math.min(1,(CB.IK[i]-IK_REST)/160), o=(T*40)%14;
+    if(ina>.08){ ctx.globalAlpha=ina; ctx.fillStyle=C.na; ctx.beginPath(); ctx.arc(x,AY-36+o,5,0,7); ctx.arc(x,AY+36-o,5,0,7); ctx.fill(); }
+    if(ik>.08){ ctx.globalAlpha=ik; ctx.fillStyle=C.k; ctx.beginPath(); ctx.arc(x,AY-22-o,5,0,7); ctx.arc(x,AY+22+o,5,0,7); ctx.fill(); } }
+  ctx.globalAlpha=1;
+  const Vs=toDisp(CB.V[0]);
+  ctx.fillStyle=vColor(Vs); ctx.strokeStyle=C.ink; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.ellipse(150,AY,78,62,0,0,7); ctx.fill(); ctx.stroke();
+  ctx.save(); ctx.translate(150,AY-12); drawFace(Vs>-20?"zap":Vs<-71.5?"tired":Vs>-68.5?"curious":"chill",120); ctx.restore();
+  note("cell body", 150, AY+96, {align:"center"});
+  note("axon", 560, AY+70, {align:"center"});
+  note("end", AX1+20, AY+80, {align:"center"});
+  note("Na⁺ in", 260, 470, {color:"#c45f00", w:800}); note("K⁺ out", 360, 470, {color:"#7a3fd0", w:800});
+}
+
+/* ---------- graph ---------- */
+function drawScope(){
+  const w=640,h=220,L=96,R=10,T=14,B=22;
+  const y=v=>T+(45-v)/(45+92)*(h-T-B);
+  sx.fillStyle="#fbf7ee"; sx.fillRect(0,0,w,h);
+  sx.font=`600 14px ${HAND}`; sx.textBaseline="middle"; sx.textAlign="right";
+  for(const [v,t,c,d] of [[30,"+30","#9a9184",0],[0,"0","#9a9184",0],[-55,"threshold −55","#d36a00",1],[-70,"rest −70","#26221d",0]]){
+    sx.strokeStyle=d?"#ff9126":"#d9cfbd"; sx.setLineDash(d?[6,5]:[]); sx.lineWidth=1.5;
+    sx.beginPath(); sx.moveTo(L,y(v)); sx.lineTo(w-R,y(v)); sx.stroke(); sx.setLineDash([]); sx.fillStyle=c; sx.fillText(t,L-8,y(v)); }
+  sx.fillStyle="#9a9184"; sx.fillText("time →", w-R, h-8);
+  const axon=CH[cur].view==="axon";
+  const series=axon?[[CB.probe,1,"#26221d"],[CB.probe,2,"#e8457a"]]:[[N.trace,1,"#26221d"]];
+  const tNow=axon?CB.t:N.t, span=axon?30:40, xOf=t=>L+(t-(tNow-span))/span*(w-L-R);
+  for(const [arr,idx,col] of series){ if(!arr.length) continue;
+    sx.strokeStyle=col; sx.lineWidth=3; sx.lineJoin="round"; sx.beginPath();
+    arr.forEach((p,i)=>{ const X=xOf(p[0]), Y=y(clamp(p[idx],-92,45)); i?sx.lineTo(X,Y):sx.moveTo(X,Y); }); sx.stroke(); }
+  if(axon){ sx.textAlign="left"; sx.fillStyle="#26221d"; sx.fillText("near cell body", L+8, h-8); sx.fillStyle="#e8457a"; sx.fillText("near the end", L+140, h-8); }
+}
+
+/* ---------- steps ---------- */
+const CH = [
+ { view:"brain", text:`Your brain has about 86 billion neurons. They talk using quick electrical blips called <b>action potentials</b>. Let's zoom in on one.` },
+ { view:"ocean", text:`Picture each neuron as a <b>salty banana</b> floating in the sea. Outside is salty water, full of <span class="na">sodium (Na⁺)</span>. Inside is banana, full of <span class="k">potassium (K⁺)</span>.` },
+ { view:"membrane", show:["kleak","pump"], text:`Up close, the peel is the <b>membrane</b>. A little <span class="k">K⁺</span> leaks out, taking + charge with it, so the inside ends up negative: <b>−70 mV</b>. A pump keeps it that way. Chillin'.` },
+ { view:"membrane", show:["lig"], tools:["soft"], text:`A neighbour neuron sends a signal. A few <span class="na">Na⁺</span> sneak in and the inside gets a bit less negative, but it's too small and fades away. Try poking it!` },
+ { view:"membrane", show:["lig","nav"], stop:"thr", text:`Now lots of signals arrive at once. They add up, and the voltage climbs to <b>−55 mV</b>. That's the <b>threshold</b>, the point of no return.` },
+ { view:"membrane", show:["nav"], stop:"peak", text:`The <span class="na">Na⁺</span> doors fly open. Na⁺ rushes in, which opens even more doors. The inside shoots up to <b>+30 mV</b>.` },
+ { view:"membrane", show:["nav","kv"], stop:"down", text:`The Na⁺ doors get plugged. The slower <span class="k">K⁺</span> doors open, K⁺ rushes out, and the voltage falls.` },
+ { view:"membrane", show:["nav","kv"], stop:"end", tools:["hard"], text:`The K⁺ doors close late, so the voltage dips to <b>−80 mV</b>. While the Na⁺ doors are plugged, the neuron can't fire again. Try a hard poke during the dip!` },
+ { view:"axon", tools:["fire","myelin"], text:`Each spot sets off the next, so the blip rolls down the axon like a wave. Add <b>myelin</b> (pool noodles) and it jumps between the gaps, so it gets to the end faster.` },
+ { view:"membrane", show:["lig","pump","nav","kv"], tools:["soft","hard"], text:`Back to chillin'. Every action potential is the same size: it fires all the way or not at all. Try a gentle poke, then a hard one.` }
+];
+
+/* ---------- UI ---------- */
+let cur=0, paused=false, held=false, tCh=0, trans=null;
+const steps=$("steps");
+CH.forEach((c,i)=>{ const b=document.createElement("button"); b.type="button"; b.setAttribute("aria-label",`Step ${i+1}`); b.onclick=()=>go(i); steps.appendChild(b); });
+function render(){
+  const c=CH[cur], t=c.tools||[];
+  $("text").innerHTML=c.text;
+  $("count").textContent=`${cur+1} of ${CH.length}`;
+  $("pokeSoft").hidden=!t.includes("soft"); $("pokeHard").hidden=!t.includes("hard");
+  $("fire").hidden=!t.includes("fire"); $("myelinWrap").hidden=!t.includes("myelin"); $("arrival").hidden=!t.includes("fire");
+  $("tools").hidden=!t.length;
+  $("prev").disabled=cur===0; $("next").disabled=cur===CH.length-1;
+  [...steps.querySelectorAll("button")].forEach((b,i)=>{ b.classList.toggle("on", i<=cur); if(i===cur) b.setAttribute("aria-current","step"); else b.removeAttribute("aria-current"); });
+  $("graph").hidden = c.view==="brain"||c.view==="ocean";
+  $("next").classList.remove("pulse");
+}
+function go(i){
+  if(i<0||i>=CH.length) return;
+  const prev=CH[cur], c=CH[i], prevIdx=cur;
+  if(prev.view!==c.view && !REDUCED && prev.view!=="brain") trans={from:prev.view,t:0,dur:prev.view==="ocean"&&c.view==="membrane"?1.6:.8};
+  cur=i; tCh=0; held=false; SHOW=c.show||[];
+  if(c.view==="membrane"){
+    const need={4:null,5:"thr",6:"peak",7:"down"};
+    if(i>=4 && i<=7){
+      const seamless = S.active && i===prevIdx+1 && S.reached.has(need[i]);
+      if(!seamless){ resetParticles(); if(i===4) startScript(); else fastForwardTo(need[i]); }
+    } else {
+      S.active=false; resetNeuron(true); resetParticles();
+      if(i===3) schedulePoke(0.15, N.t+2);
+    }
+  }
+  if(c.view==="axon"){ CB.myelin=$("myelin").checked; resetCable(); fireCable(); }
+  render();
+}
+$("prev").onclick=()=>go(cur-1);
+$("next").onclick=()=>go(cur+1);
+$("pokeSoft").onclick=()=>userPoke(0.15);
+$("pokeHard").onclick=()=>userPoke(0.3);
+$("fire").onclick=fireCable;
+$("myelin").onchange=e=>{ CB.myelin=e.target.checked; resetCable(); fireCable(); };
+addEventListener("keydown",e=>{
+  if(e.target.matches("input,select,textarea")) return;
+  if(e.key==="ArrowRight") go(cur+1); else if(e.key==="ArrowLeft") go(cur-1);
+  else if(e.key===" "){ e.preventDefault(); paused=!paused; }
+});
+
+/* ---------- loop ---------- */
+let last=performance.now(), T=0;
+function drawView(v,dt){
+  if(v==="brain") drawBrain(T); else if(v==="ocean") drawOcean(T,dt);
+  else if(v==="membrane") drawMembrane(T); else if(v==="axon") drawAxon(T);
+}
+function frame(now){
+  let dt=Math.min(.05,(now-last)/1000); last=now; if(paused) dt=0;
+  T+=dt; tCh+=dt;
+  const c=CH[cur];
+  if(c.view==="membrane" && dt>0){
+    if(!held){
+      const base = cur===2||cur===3||cur===9 ? 5 : 3.2;
+      simRate = base/(1+Math.abs(N.dV)/35);
+      const budget=simRate*dt; let done=0;
+      updatePokeVisuals();
+      while(done<budget){ const h=Math.min(.005,budget-done); stepNeuron(h); done+=h;
+        const m=checkMilestones(); if(m && m===c.stop){ held=true; $("next").classList.add("pulse"); break; } }
+      channelFlux(done,dt);
+    }
+    stepParticles(dt);
+  }
+  if(c.view==="axon" && dt>0){
+    const budget=2.6*dt; for(let s=0;s<budget/0.001;s++) stepCable(0.001);
+    $("arrival").textContent = CB.arrive!==null ? `got to the end in ${CB.arrive.toFixed(1)} ms` : "";
+    if(CB.t-CB.fireT>32) fireCable();
+  }
+  if(c.view==="brain" && tCh>5.6) go(1);
+  ctx.save();
+  if(c.view==="brain"){
+    const z = REDUCED ? 1 : 1+Math.pow(clamp((tCh-1.8)/3.6,0,1),2.2)*14;
+    ctx.translate(560,230); ctx.scale(z,z); ctx.translate(-560,-230); drawBrain(T); ctx.restore(); ctx.save();
+    const f=clamp((tCh-4.4)/1.1,0,1); if(f>0){ ctx.globalAlpha=f; drawOcean(T,0); }
+  } else if(trans){
+    trans.t+=dt/trans.dur; const k=ease(clamp(trans.t,0,1));
+    if(trans.from==="ocean" && c.view==="membrane"){
+      const hp=BAN[2], z=1+k*9;
+      ctx.save(); ctx.translate(hp.x,hp.y+30); ctx.scale(z,z); ctx.translate(-hp.x,-hp.y-30); drawOcean(T,0); ctx.restore();
+      ctx.globalAlpha=clamp((k-.45)/.55,0,1); drawView(c.view,dt);
+    } else { drawView(trans.from,0); ctx.globalAlpha=k; drawView(c.view,dt); }
+    if(trans.t>=1) trans=null;
+  } else drawView(c.view,dt);
+  ctx.restore();
+  if(!$("graph").hidden) drawScope();
+  requestAnimationFrame(frame);
+}
+resize(); resetParticles(); resetCable(); go(0);
+requestAnimationFrame(t=>{ last=t; frame(t); });
+})();
+</script>
+
+</body></html>
