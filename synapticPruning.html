@@ -134,14 +134,14 @@
       <li><b>Overproduction.</b> In the first years of life, neurons form synapses much faster than they will need them. Synapse density in human cortex peaks in early childhood, well above adult levels.</li>
       <li><b>Use strengthens.</b> When one neuron repeatedly helps the next one fire, the synapse between them gets stronger. Here, each experience (Vision, Language, Music) drives one pathway again and again.</li>
       <li><b>Weak synapses get tagged.</b> Synapses that rarely carry signals weaken. Complement proteins (C1q and C3) mark them for removal. Tagged synapses turn into red dashed lines, and can still be rescued if they get used.</li>
-      <li><b>Microglia remove them.</b> Microglia, the brain's resident immune cells, find tagged synapses and engulf them.</li>
+      <li><b>Microglia remove them.</b> Microglia, the brain's resident immune cells, find tagged synapses and engulf them. Astrocytes, another kind of support cell, help remove synapses too.</li>
     </ol>
 
     <h2>Try this</h2>
-    <p>Uncheck <b>Music</b> before age 5 and watch its orange pathway fade, get tagged, and get eaten. Check it again later. Does the pathway come back?</p>
+    <p>Uncheck <b>Music</b> around age 3 and keep watching. Over the next several years its orange pathway weakens, and by the teen years parts of it get tagged and eaten, while Vision and Language stay strong. Check it again later. Do the missing pieces come back?</p>
 
     <h2>Keep in mind</h2>
-    <p>This is a simplified model. In it, removed synapses never regrow. Real brains still form new synapses throughout life, just far fewer. A human cortex has around 100 trillion synapses, and different regions prune on different schedules: visual areas peak within the first year, while prefrontal cortex keeps pruning into the twenties.</p>
+    <p>This is a simplified model. In it, removed synapses never regrow. Real brains still form new synapses throughout life, just far fewer. A human cortex has roughly 100 to 150 trillion synapses, and different regions prune on different schedules: visual areas peak within the first year, while prefrontal cortex keeps pruning into the twenties.</p>
     <p>Artificial neural networks get pruned too. After training, deleting the smallest weights often costs little accuracy.</p>
   </div>
 
@@ -218,7 +218,7 @@
   }
 
   function decayRate(a) {
-    return 0.012 * smooth(1.5, 3, a) * (a > 14 ? Math.max(0.35, 1 - (a - 14) / 6) : 1);
+    return 0.024 * smooth(1, 2.5, a) * (a > 8 ? Math.max(0.06, 1 - (a - 8) / 9) : 1);
   }
 
   function stimulate(e) {
