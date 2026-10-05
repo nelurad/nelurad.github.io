@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Synapse Explorer</title>
+<style>
+  body { margin: 0; background: #cdf5f5; font-family: Arial, Helvetica, sans-serif; color: #111; }
+  .wrap { max-width: 1150px; margin: 0 auto; padding: 14px 16px 40px; }
+  .back { font-size: 14px; color: #1a4f8b; }
+  h1 { font-size: 28px; margin: 8px 0 4px; }
+  .intro { margin: 0 0 14px; font-size: 16px; max-width: 72ch; line-height: 1.4; }
+
+  .sim { display: grid; grid-template-columns: minmax(0, 1fr) 270px; gap: 14px; align-items: start; }
+  @media (max-width: 860px) { .sim { grid-template-columns: minmax(0, 1fr); } }
+
+  .stage { position: relative; aspect-ratio: 1000 / 560; background: #e2fcfc; border: 1px solid #9cc; }
+  .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .readout { position: absolute; top: 10px; right: 10px; background: #fff; border: 1px solid #333; border-radius: 4px; padding: 5px 10px; font-size: 14px; line-height: 1.35; text-align: right; }
+  .readout b { font-size: 18px; font-variant-numeric: tabular-nums; }
+
+  .controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
+  .box { background: #f0efc6; border: 1.5px solid #8c8c70; border-radius: 10px; padding: 10px 14px; }
+  .box h2 { font-size: 19px; margin: 0 0 6px; }
+  .opt { display: flex; align-items: center; gap: 8px; font-size: 16px; margin: 6px 0; cursor: pointer; }
+  input[type=checkbox], input[type=radio] { width: 18px; height: 18px; margin: 0; cursor: pointer; flex: none; }
+  .speedbox .opt { margin: 3px 0; }
+
+  .transport { display: flex; align-items: center; gap: 10px; }
+  .rbtn { border-radius: 50%; border: 1px solid #555; cursor: pointer; display: grid; place-items: center; padding: 0; box-shadow: 0 2px 3px rgba(0,0,0,.35); }
+  .rbtn:active { transform: translateY(1px); box-shadow: 0 1px 1px rgba(0,0,0,.35); }
+  .play  { width: 66px; height: 66px; background: radial-gradient(circle at 35% 30%, #e3f1ff 0%, #8cc4f5 45%, #4a90d0 100%); border-color: #2f6699; }
+  .step  { width: 46px; height: 46px; background: radial-gradient(circle at 35% 30%, #fff, #d6d6d6 55%, #a8a8a8); }
+  .reset { width: 56px; height: 56px; background: radial-gradient(circle at 35% 30%, #ffd29a, #f7941d 55%, #d36f00); border-color: #9a5000; }
+  .right-ctrl { display: flex; align-items: center; gap: 14px; }
+  .bigyellow { background: #f6ec3c; border: 1.5px solid #8c8424; border-radius: 6px; font: bold 17px/1.15 Arial, sans-serif; padding: 11px 16px; cursor: pointer; box-shadow: 0 2px 3px rgba(0,0,0,.3); color: #111; }
+  .bigyellow:active { transform: translateY(1px); }
+  button:focus-visible, input:focus-visible { outline: 3px solid #1565c0; outline-offset: 2px; }
+
+  .side { display: grid; gap: 12px; }
+  .lg { display: flex; align-items: center; gap: 10px; margin: 6px 0; font-size: 15px; }
+  .lg svg { flex: none; }
+  .sw { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 1px solid #333; flex: none; }
+  .note { font-size: 14px; line-height: 1.35; margin: 4px 0 2px; color: #333; }
+  .effect { font-weight: bold; }
+  .effect.up { color: #c62828; }
+  .effect.down { color: #1565c0; }
+
+  .chartbox { margin-top: 12px; background: #fff; border: 1.5px solid #8c8c70; border-radius: 10px; padding: 8px 12px 6px; }
+  .chartbox h2 { font-size: 17px; margin: 0 0 4px; }
+  #chart { width: 100%; height: 150px; display: block; }
+
+  .info { background: #fff; border: 1px solid #9cc; padding: 6px 20px 14px; margin-top: 18px; font-size: 15px; line-height: 1.5; }
+  .info h2 { font-size: 20px; margin: 14px 0 6px; }
+  .info ol { margin: 0; padding-left: 22px; }
+  .info li { margin: 6px 0; padding: 1px 4px; border-radius: 4px; transition: background .2s; }
+  .info li.on { background: #fff59d; }
+  .info p { margin: 6px 0; max-width: 80ch; }
+  footer { font-size: 13px; color: #355; margin-top: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/teaching.html">&larr; Back to Teaching</a>
+  <h1>Synapse Explorer</h1>
+  <p class="intro">Neurons talk to each other by releasing chemical messengers called neurotransmitters. Pick a messenger, press <b>Release</b>, and watch what happens to the cell that receives it.</p>
+
+  <div class="sim">
+    <div>
+      <div class="stage" id="stage">
+        <canvas id="sc" role="img" aria-label="Animated synapse: transmitter released from one neuron crosses the gap and binds receptors on the next"></canvas>
+        <div class="readout">Receiving cell: <b id="volt">−70</b> mV<br><span id="stepNow">Waiting…</span></div>
+      </div>
+
+      <div class="controls">
+        <div class="box speedbox" role="radiogroup" aria-label="Speed">
+          <label class="opt"><input type="radio" name="speed" value="1" checked> Normal</label>
+          <label class="opt"><input type="radio" name="speed" value="0.35"> Slow Motion</label>
+        </div>
+
+        <div class="transport">
+          <button class="rbtn play" id="play" type="button" aria-label="Pause"></button>
+          <button class="rbtn step" id="stepBtn" type="button" aria-label="Step forward">
+            <svg width="22" height="22" viewBox="0 0 22 22"><rect x="3" y="4" width="3.5" height="14" fill="#555"/><path d="M9 4 L19 11 L9 18 Z" fill="#555"/></svg>
+          </button>
+        </div>
+
+        <div class="right-ctrl">
+          <button class="bigyellow" id="release" type="button">Release<br>Transmitter</button>
+          <button class="rbtn reset" id="restart" type="button" aria-label="Restart">
+            <svg width="30" height="30" viewBox="0 0 30 30"><path d="M22 9 A9 9 0 1 0 24 16" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/><path d="M17 5 L25 5 L24 13 Z" fill="#fff"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="chartbox" id="chartbox">
+        <h2>Receiving Cell Voltage</h2>
+        <canvas id="chart" role="img" aria-label="Voltage of the receiving cell over the last second"></canvas>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="box">
+        <h2>Neurotransmitter</h2>
+        <div id="txList" role="radiogroup" aria-label="Neurotransmitter"></div>
+      </div>
+
+      <div class="box">
+        <h2>Receptor</h2>
+        <div id="rxList" role="radiogroup" aria-label="Receptor"></div>
+        <p class="note" id="rxNote"></p>
+      </div>
+
+      <div class="box">
+        <h2>Drug</h2>
+        <label class="opt"><input type="checkbox" id="drug"> <span id="drugName">Add drug</span></label>
+        <p class="note" id="drugNote"></p>
+      </div>
+
+      <div class="box">
+        <h2>Show</h2>
+        <label class="opt"><input type="checkbox" id="showLabels" checked> Labels</label>
+        <label class="opt"><input type="checkbox" id="showIons" checked> Ions</label>
+        <label class="opt"><input type="checkbox" id="autoFire" checked> Release every 4 s</label>
+        <label class="opt"><input type="checkbox" id="showChart" checked> Voltage Chart</label>
+      </div>
+
+      <div class="box">
+        <h2>Legend</h2>
+        <div class="lg"><svg width="28" height="18"><circle cx="14" cy="9" r="7" fill="#fff" stroke="#333" stroke-width="1.5"/><circle cx="11" cy="7" r="1.8" fill="#e53935"/><circle cx="16" cy="11" r="1.8" fill="#e53935"/></svg>Vesicle</div>
+        <div class="lg"><svg width="28" height="18"><circle cx="14" cy="9" r="5" fill="#e53935" stroke="#333" stroke-width="1"/></svg>Neurotransmitter</div>
+        <div class="lg"><svg width="28" height="18"><rect x="6" y="1" width="6" height="16" rx="2" fill="#5d7088" stroke="#333"/><rect x="16" y="1" width="6" height="16" rx="2" fill="#5d7088" stroke="#333"/></svg>Receptor</div>
+        <div class="lg"><svg width="28" height="18"><circle cx="14" cy="9" r="7" fill="#fb8c00" stroke="#333" stroke-width="1"/><text x="14" y="12" font-size="7" font-weight="bold" text-anchor="middle" fill="#fff" font-family="Arial">Na</text></svg>Ion</div>
+        <div class="lg"><svg width="28" height="18"><rect x="7" y="2" width="14" height="14" rx="3" fill="#a1887f" stroke="#333"/></svg>Clean-up protein</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="info">
+    <h2>What's happening?</h2>
+    <ol id="steps">
+      <li><b>A signal arrives.</b> An electrical signal (an action potential) travels down the first neuron to its tip.</li>
+      <li><b>Calcium rushes in.</b> The signal opens calcium (Ca²⁺) channels, and calcium flows into the tip.</li>
+      <li><b>Vesicles release the messenger.</b> Calcium makes the little bubbles (vesicles) fuse with the edge of the cell and spill out neurotransmitter.</li>
+      <li><b>The messenger crosses the gap.</b> It drifts across the tiny gap between the cells (the synaptic cleft) and fits into receptors, like a key in a lock.</li>
+      <li><b>The receiving cell responds.</b> Depending on the receptor, the cell gets a push toward firing (excited) or a nudge away from it (inhibited). Watch the voltage chart.</li>
+      <li><b>Clean-up.</b> Proteins pull the messenger back in or break it apart, so the signal doesn't last forever.</li>
+    </ol>
+
+    <h2>Try this</h2>
+    <p>Pick <b>Glutamate</b> and press Release a few times quickly. Can you push the voltage over the dashed line and make the cell fire? Now pick <b>GABA</b>. What happens to the voltage instead?</p>
+    <p>Pick <b>Serotonin</b> and turn on the drug (an SSRI, a common antidepressant). Watch how long the messenger hangs around in the gap.</p>
+
+    <h2>Keep in mind</h2>
+    <p>This is a simplified model. Real synapses work about 100 times faster than shown here, a single synapse changes the voltage much less, and real cells carry many kinds of receptors at once.</p>
+  </div>
+
+  <footer>Made by Nelu Radpour for Introduction to Neuroscience (PSB 2000), Florida State University.</footer>
+</div>
+
+<script>
+(() => {
+  // ---------- data ----------
+  const TX = [
+    { id: 'glu', name: 'Glutamate', color: '#e53935',
+      about: 'The brain’s main "go" signal.',
+      clear: 'reuptake',
+      drug: { name: 'ketamine', kind: 'pore', rx: 'ampa', text: 'Blocks the receptor’s channel, so even with glutamate bound, nothing gets through. (In real life ketamine blocks a related receptor called NMDA.)' },
+      rx: [
+        { id: 'ampa', name: 'AMPA', kind: 'iono', ions: [['Na', 'in']], amp: 17, tau: 0.03,
+          text: 'A fast ion channel. Sodium rushes in and excites the cell.' },
+        { id: 'mglu', name: 'mGluR', kind: 'meta', g: 'Gq', eff: 'PLC', amp: 6,
+          text: 'A slow receptor. It starts a chain reaction inside the cell that gently excites it.' },
+      ] },
+    { id: 'gaba', name: 'GABA', color: '#1e88e5',
+      about: 'The brain’s main "stop" signal.',
+      clear: 'reuptake',
+      drug: { name: 'a benzodiazepine', kind: 'boost', rx: 'gabaa', text: 'Anti-anxiety medicines like Valium make GABA’s effect stronger and longer.' },
+      rx: [
+        { id: 'gabaa', name: 'GABA-A', kind: 'iono', ions: [['Cl', 'in']], amp: -11, tau: 0.05,
+          text: 'A fast ion channel. Chloride flows in and calms the cell down.' },
+        { id: 'gabab', name: 'GABA-B', kind: 'meta', g: 'Gi', eff: 'GIRK', amp: -7,
+          text: 'A slow receptor. It opens potassium channels and quiets the cell for longer.' },
+      ] },
+    { id: 'ach', name: 'Acetylcholine', color: '#00897b',
+      about: 'Makes muscles move, and helps with attention and memory.',
+      clear: 'enzyme',
+      drug: { name: 'donepezil', kind: 'enzyme', text: 'An Alzheimer’s medicine. It slows the enzyme that breaks acetylcholine down, so it lasts longer.' },
+      rx: [
+        { id: 'nic', name: 'Nicotinic', kind: 'iono', ions: [['Na', 'in'], ['Na', 'in'], ['K', 'out']], amp: 17, tau: 0.03,
+          text: 'A fast ion channel. This is how nerves tell muscles to contract. Nicotine acts here too.' },
+        { id: 'm2', name: 'Muscarinic', kind: 'meta', g: 'Gi', eff: 'GIRK', amp: -7,
+          text: 'A slow receptor. In the heart, it slows the heartbeat down.' },
+      ] },
+    { id: 'da', name: 'Dopamine', color: '#8e24aa',
+      about: 'Linked to reward, motivation, and movement.',
+      clear: 'reuptake',
+      drug: { name: 'cocaine', kind: 'reuptake', text: 'Blocks the clean-up proteins, so dopamine stays in the gap and keeps hitting receptors.' },
+      rx: [
+        { id: 'd1', name: 'D1', kind: 'meta', g: 'Gs', eff: 'ACup', amp: 5,
+          text: 'A slow receptor. It makes the cell a little more excitable.' },
+        { id: 'd2', name: 'D2', kind: 'meta', g: 'Gi', eff: 'ACdown', amp: -5,
+          text: 'A slow receptor. It makes the cell a little less excitable.' },
+      ] },
+    { id: 'sht', name: 'Serotonin', color: '#f9a825',
+      about: 'Helps regulate mood, sleep, and appetite.',
+      clear: 'reuptake',
+      drug: { name: 'an SSRI', kind: 'reuptake', text: 'Antidepressants like Prozac block the clean-up proteins, so serotonin stays in the gap longer.' },
+      rx: [
+        { id: '5ht3', name: '5-HT3', kind: 'iono', ions: [['Na', 'in'], ['Na', 'in'], ['K', 'out']], amp: 14, tau: 0.04,
+          text: 'A fast ion channel, the only one for serotonin. It excites the cell.' },
+        { id: '5ht1a', name: '5-HT1A', kind: 'meta', g: 'Gi', eff: 'GIRK', amp: -6,
+          text: 'A slow receptor. It opens potassium channels and quiets the cell.' },
+      ] },
+  ];
+  TX.forEach(t => t.rx.forEach(r => { r.dwell = r.kind === 'iono' ? 0.35 : 0.7; }));
+
+  const COL = { cleft: '#e2fcfc', pre: '#fff3b0', post: '#d6f2c2', edge: '#333', receptor: '#5d7088', protein: '#a1887f',
+                ca: '#43a047', Na: '#fb8c00', K: '#7e57c2', Cl: '#26c6da', Ca: '#43a047', fire: '#ff7043',
+                Gs: '#e53935', Gi: '#1e88e5', Gq: '#8e24aa' };
+  const ION_LABEL = { Na: 'Na', K: 'K', Cl: 'Cl', Ca: 'Ca' };
+
+  // ---------- geometry (scene units 1000 × 560) ----------
+  const SW = 1000, SH = 560, PRE_Y = 230, POST_Y = 330, SITE_Y = POST_Y - 38;
+  const RX_X = [290, 430, 570, 710], TR_X = [150, 230, 770, 850];
+  const VES_HOME = [[330, 150], [410, 178], [490, 138], [570, 178], [650, 150], [450, 92], [560, 96]];
+  const TRACE_WIN = 10;
+
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const ease = x => { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
+
+  // ---------- state ----------
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let txI = 0, rxI = 0, drugOn = false, auto = !reduced, playing = true, speed = 1;
+  const show = { labels: true, ions: true };
+  let T = 0, V = -70, lastAP = -9, lastClear = -9, lastSpike = -9, nextAuto = 0.8;
+  let mols, ions, fx, ves, recs, enz, trace, marks;
+
+  const tx = () => TX[txI], rx = () => TX[txI].rx[rxI];
+  const drugHits = () => { const d = drugOn ? tx().drug : null; return d && (!d.rx || d.rx === rx().id) ? d : null; };
+
+  function reset() {
+    mols = []; ions = []; fx = []; trace = []; marks = [];
+    ves = VES_HOME.map(([x, y]) => ({ hx: x, hy: y, x, y, st: 'idle', t: 0, grow: 1 }));
+    recs = RX_X.map(x => ({ x, bound: null, ov: 0, a: 0, e: 0, spawn: 0 }));
+    enz = [[220, 280], [400, 300], [600, 272], [780, 296]].map(([x, y], i) => ({ x, y, bx: x, by: y, ph: i * 1.3 }));
+    V = -70; lastSpike = -9; lastAP = -9; nextAuto = T + 0.8;
+  }
+
+  function release() {
+    lastAP = T; marks.push(T);
+    for (let i = 0; i < 8; i++) fx.push({ k: 'ca', x: rnd(280, 720), y: PRE_Y + 22, t0: T + 0.1 + Math.random() * 0.15 });
+    ves.filter(v => v.st === 'idle').sort((a, b) => b.hy - a.hy).slice(0, 3).forEach((v, i) => {
+      v.st = 'wait'; v.t = T + 0.22 + i * 0.06; v.tx = clamp(v.hx + rnd(-30, 30), 300, 700); v.spawned = false;
+    });
+  }
+
+  // ---------- simulation ----------
+  function step(dt) {
+    T += dt;
+    const R = rx(), d = drugHits(), clear = tx().clear;
+    const pore = d && d.kind === 'pore', boost = d && d.kind === 'boost';
+    const trBlocked = d && d.kind === 'reuptake', enzBlocked = d && d.kind === 'enzyme';
+
+    if (auto && T >= nextAuto) { release(); nextAuto = T + 4; }
+
+    for (const v of ves) {
+      if (v.st === 'wait' && T >= v.t) v.st = 'dock';
+      if (v.st === 'dock') {
+        const dx = v.tx - v.x, dy = (PRE_Y - 24) - v.y, dd = Math.hypot(dx, dy);
+        if (dd < 3) { v.st = 'fuse'; v.t = T; }
+        else { const s = Math.min(dd, 420 * dt); v.x += dx / dd * s; v.y += dy / dd * s; }
+      } else if (v.st === 'fuse') {
+        if (!v.spawned) {
+          v.spawned = true;
+          for (let i = 0; i < 9; i++) mols.push({ x: v.x + rnd(-10, 10), y: PRE_Y + 10, vx: rnd(-70, 70), vy: rnd(60, 150), st: 'free', t: 0 });
+        }
+        if (T - v.t > 0.25) { v.st = 'refill'; v.t = T + 1.6; }
+      } else if (v.st === 'refill' && T >= v.t) { v.st = 'idle'; v.x = v.hx; v.y = v.hy; v.grow = 0; }
+      else if (v.st === 'idle') v.grow = Math.min(1, v.grow + dt * 3);
+    }
+
+    for (const e of enz) { e.ph += dt; e.x = e.bx + Math.sin(e.ph * 0.9) * 14; e.y = e.by + Math.cos(e.ph * 1.2) * 8; }
+
+    const damp = Math.pow(0.15, dt);
+    for (const m of mols) {
+      if (m.st === 'free') {
+        m.vx = (m.vx + (Math.random() - 0.5) * 1100 * dt) * damp;
+        m.vy = (m.vy + (Math.random() - 0.5) * 1100 * dt) * damp;
+        const sp = Math.hypot(m.vx, m.vy); if (sp > 170) { m.vx *= 170 / sp; m.vy *= 170 / sp; }
+        m.x += m.vx * dt; m.y += m.vy * dt;
+        if (m.y < PRE_Y + 8) { m.y = PRE_Y + 8; m.vy = Math.abs(m.vy); }
+        if (m.y > POST_Y - 32) { m.y = POST_Y - 32; m.vy = -Math.abs(m.vy); }
+        if (m.x < 70 || m.x > 930) { m.st = 'gone'; m.t = T; continue; }
+        for (const r of recs) {
+          if (!r.bound && Math.hypot(m.x - r.x, m.y - SITE_Y) < 18) {
+            r.bound = m; m.st = 'bound'; m.r = r; m.x = r.x; m.y = SITE_Y;
+            m.until = T + R.dwell * (boost ? 1.6 : 1) * rnd(0.7, 1.3); break;
+          }
+        }
+        if (m.st !== 'free') continue;
+        if (clear === 'reuptake' && !trBlocked) for (const x of TR_X) {
+          if (Math.hypot(m.x - x, m.y - (PRE_Y + 14)) < 24 && Math.random() < 7 * dt) { m.st = 'up'; m.t = T; m.x = x; lastClear = T; break; }
+        }
+        if (clear === 'enzyme' && !enzBlocked) for (const e of enz) {
+          if (Math.hypot(m.x - e.x, m.y - e.y) < 20 && Math.random() < 9 * dt) { m.st = 'split'; m.t = T; lastClear = T; break; }
+        }
+      } else if (m.st === 'bound' && T >= m.until) {
+        m.st = 'free'; m.r.bound = null; m.r = null; m.vy = -90; m.y -= 4;
+      } else if (m.st === 'up') m.y -= 70 * dt;
+    }
+    mols = mols.filter(m => !((m.st === 'up' || m.st === 'split' || m.st === 'gone') && T - m.t > 0.5));
+
+    let sum = 0;
+    for (const r of recs) {
+      const bound = r.bound ? 1 : 0;
+      if (R.kind === 'iono') {
+        r.ov += (bound - r.ov) * clamp(dt / Math.max(R.tau, 0.05), 0, 1);
+        const flow = pore ? 0 : 1;
+        sum += r.ov * flow;
+        if (r.ov > 0.4 && flow > 0.5) {
+          r.spawn += dt * 11 * r.ov * (boost ? 1.6 : 1);
+          while (r.spawn >= 1) {
+            r.spawn--;
+            const [ty, dir] = R.ions[Math.floor(Math.random() * R.ions.length)];
+            ions.push({ ty, x: r.x + rnd(-3, 3), y: dir === 'in' ? POST_Y - 30 : POST_Y + 62, vy: dir === 'in' ? 120 : -120, t: 0 });
+          }
+        }
+      } else {
+        r.a += (bound - r.a) * clamp(dt / 0.4, 0, 1);
+        r.e += (r.a - r.e) * clamp(dt / 1.0, 0, 1);
+        sum += r.e;
+        if (r.e > 0.25 && R.eff === 'GIRK') {
+          r.spawn += dt * 6 * r.e;
+          while (r.spawn >= 1) { r.spawn--; ions.push({ ty: 'K', x: r.x + 52 + rnd(-2, 2), y: POST_Y + 50, vy: -110, t: 0 }); }
+        }
+      }
+    }
+    const I = R.amp * (sum / recs.length) * (boost ? 1.7 : 1);
+    V += (-70 + I - V) * clamp(dt / 0.15, 0, 1);
+    let spike = false;
+    if (V >= -55 && T - lastSpike > 0.12) { spike = true; lastSpike = T; V = -75; }
+
+    for (const io of ions) { io.y += io.vy * dt; io.t += dt; }
+    ions = ions.filter(io => io.t < 0.85);
+    fx = fx.filter(f => T - f.t0 < 0.6);
+
+    trace.push({ t: T, v: V, s: spike });
+    while (trace.length && trace[0].t < T - TRACE_WIN) trace.shift();
+    while (marks.length && marks[0] < T - TRACE_WIN) marks.shift();
+  }
+
+  // ---------- drawing ----------
+  const stage = document.getElementById('stage'), sc = document.getElementById('sc'), ctx = sc.getContext('2d');
+  const chart = document.getElementById('chart'), cctx = chart.getContext('2d');
+  let dpr = 1, cw = 0, chw = 0, chh = 0;
+  function resize() {
+    dpr = window.devicePixelRatio || 1;
+    cw = stage.clientWidth; sc.width = Math.round(cw * dpr); sc.height = Math.round(stage.clientHeight * dpr);
+    chw = chart.clientWidth; chh = chart.clientHeight; chart.width = Math.round(chw * dpr); chart.height = Math.round(chh * dpr);
+  }
+  new ResizeObserver(resize).observe(stage);
+  new ResizeObserver(resize).observe(chart);
+
+  function rrect(c, x, y, w, h, r) { c.beginPath(); c.roundRect(x, y, w, h, r); }
+  function label(c, text, x, y, size, color, align = 'left', bold = false) {
+    c.font = `${bold ? 'bold ' : ''}${size}px Arial, Helvetica, sans-serif`; c.fillStyle = color; c.textAlign = align; c.textBaseline = 'middle'; c.fillText(text, x, y);
+  }
+  function xMark(c, x, y) {
+    c.strokeStyle = '#d50000'; c.lineWidth = 4; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(x - 8, y - 8); c.lineTo(x + 8, y + 8); c.moveTo(x + 8, y - 8); c.lineTo(x - 8, y + 8); c.stroke(); c.lineCap = 'butt';
+  }
+
+  function drawScene() {
+    const s = cw / SW, c = ctx, R = rx(), d = drugHits(), color = tx().color;
+    c.setTransform(dpr * s, 0, 0, dpr * s, 0, 0);
+    c.fillStyle = COL.cleft; c.fillRect(0, 0, SW, SH);
+    const small = Math.max(15, 12 / s);
+
+    // receiving cell
+    rrect(c, 60, POST_Y, 880, 320, 70); c.fillStyle = COL.post; c.fill();
+    const flash = clamp(1 - (T - lastSpike) / 0.6, 0, 1);
+    if (flash > 0) { c.globalAlpha = 0.35 * flash; c.fillStyle = COL.fire; c.fill(); c.globalAlpha = 1; }
+    c.strokeStyle = COL.edge; c.lineWidth = 3; c.stroke();
+
+    // sending cell
+    rrect(c, 120, -60, 760, 290, 80); c.fillStyle = COL.pre; c.fill();
+    const ap = (T - lastAP) / 0.32;
+    if (ap >= 0 && ap < 1) {
+      c.save(); c.clip();
+      const y = -40 + ap * 270, g = c.createLinearGradient(0, y - 50, 0, y + 20);
+      g.addColorStop(0, 'rgba(255,112,67,0)'); g.addColorStop(0.75, 'rgba(255,112,67,.55)'); g.addColorStop(1, 'rgba(255,112,67,0)');
+      c.fillStyle = g; c.fillRect(120, y - 50, 760, 70); c.restore();
+      rrect(c, 120, -60, 760, 290, 80);
+    }
+    c.strokeStyle = COL.edge; c.lineWidth = 3; c.stroke();
+
+    if (show.labels) {
+      label(c, 'Sending neuron', 150, 28, small + 2, '#333', 'left', true);
+      label(c, 'Gap (synaptic cleft)', 76, 280, small, '#333');
+      label(c, 'Receiving neuron', 96, 530, small + 2, '#333', 'left', true);
+    }
+    if (flash > 0) { c.globalAlpha = flash; label(c, 'The cell fired!', 500, 505, 26, '#d84315', 'center', true); c.globalAlpha = 1; }
+
+    // calcium channels + calcium
+    for (const x of [300, 500, 700]) { rrect(c, x - 7, PRE_Y - 14, 14, 28, 4); c.fillStyle = COL.ca; c.fill(); c.strokeStyle = COL.edge; c.lineWidth = 1.5; c.stroke(); }
+    if (show.ions) for (const f of fx) if (f.k === 'ca' && T >= f.t0) {
+      const k = (T - f.t0) / 0.6; c.globalAlpha = 1 - k;
+      c.beginPath(); c.arc(f.x, f.y - k * 70, 6, 0, 6.283); c.fillStyle = COL.ca; c.fill(); c.strokeStyle = COL.edge; c.lineWidth = 1; c.stroke(); c.globalAlpha = 1;
+    }
+    if (show.labels && T - lastAP > 0.1 && T - lastAP < 0.8) label(c, 'Calcium', 722, PRE_Y - 30, small, '#2e7d32', 'left', true);
+
+    // vesicles
+    for (const v of ves) {
+      if (v.st === 'refill') continue;
+      let r = 22 * (v.st === 'idle' ? v.grow : 1);
+      if (v.st === 'fuse') r *= 1 - clamp((T - v.t) / 0.25, 0, 1) * 0.8;
+      c.beginPath(); c.arc(v.x, v.y, r, 0, 6.283); c.fillStyle = '#fff'; c.fill();
+      c.strokeStyle = COL.edge; c.lineWidth = 2; c.stroke();
+      if (v.st !== 'fuse') for (let i = 0; i < 6; i++) {
+        const a = i / 6 * 6.283 + v.hx; c.beginPath(); c.arc(v.x + Math.cos(a) * r * 0.45, v.y + Math.sin(a) * r * 0.45, r * 0.16, 0, 6.283); c.fillStyle = color; c.fill();
+      }
+    }
+    if (show.labels) label(c, 'Vesicles', 680, 96, small, '#333');
+
+    // clean-up proteins
+    if (tx().clear === 'reuptake') {
+      for (const x of TR_X) {
+        rrect(c, x - 13, PRE_Y - 16, 26, 34, 6); c.fillStyle = COL.protein; c.fill(); c.strokeStyle = COL.edge; c.lineWidth = 1.5; c.stroke();
+        c.fillStyle = COL.pre; c.fillRect(x - 4, PRE_Y - 8, 8, 26);
+        if (d && d.kind === 'reuptake') xMark(c, x, PRE_Y + 30);
+      }
+      if (show.labels) label(c, 'Clean-up (reuptake)', 190, PRE_Y - 34, small, '#333', 'center');
+    } else {
+      for (const e of enz) {
+        c.beginPath(); c.moveTo(e.x, e.y); c.arc(e.x, e.y, 13, 0.6, 6.283 - 0.6); c.closePath();
+        c.fillStyle = COL.protein; c.fill(); c.strokeStyle = COL.edge; c.lineWidth = 1.5; c.stroke();
+        if (d && d.kind === 'enzyme') xMark(c, e.x + 4, e.y);
+      }
+      if (show.labels) label(c, 'Clean-up enzyme', 76, 308, small, '#333');
+    }
+
+    // receptors
+    for (const r of recs) R.kind === 'iono' ? drawIono(c, r, d) : drawMeta(c, r, R);
+    if (show.labels) label(c, `${R.name} receptors`, 920, POST_Y + 40, small + 1, '#111', 'right', true);
+
+    // transmitter
+    for (const m of mols) {
+      let a = 1;
+      if (m.st === 'up' || m.st === 'gone') a = 1 - (T - m.t) / 0.5;
+      c.globalAlpha = clamp(a, 0, 1); c.fillStyle = color; c.strokeStyle = COL.edge; c.lineWidth = 1;
+      if (m.st === 'split') {
+        const k = (T - m.t) / 0.5; c.globalAlpha = clamp(1 - k, 0, 1);
+        c.beginPath(); c.arc(m.x - 8 * k, m.y, 4.5, 0, 6.283); c.fill(); c.stroke();
+        c.beginPath(); c.arc(m.x + 8 * k, m.y, 4.5, 0, 6.283); c.fill(); c.stroke();
+      } else { c.beginPath(); c.arc(m.x, m.y, 7, 0, 6.283); c.fill(); c.stroke(); }
+      c.globalAlpha = 1;
+    }
+
+    // ions
+    if (show.ions) for (const io of ions) {
+      c.globalAlpha = clamp(1 - io.t / 0.85, 0, 1) * 0.95 + 0.05;
+      c.beginPath(); c.arc(io.x, io.y, 10, 0, 6.283); c.fillStyle = COL[io.ty]; c.fill(); c.strokeStyle = COL.edge; c.lineWidth = 1; c.stroke();
+      label(c, ION_LABEL[io.ty], io.x, io.y + 0.5, 9, '#fff', 'center', true);
+    }
+    c.globalAlpha = 1;
+  }
+
+  function drawIono(c, r, d) {
+    const g = 4 + 14 * r.ov, x = r.x;
+    c.fillStyle = COL.receptor; c.strokeStyle = COL.edge; c.lineWidth = 1.5;
+    rrect(c, x - g / 2 - 18, POST_Y - 32, 18, 66, 6); c.fill(); c.stroke();
+    rrect(c, x + g / 2, POST_Y - 32, 18, 66, 6); c.fill(); c.stroke();
+    if (!r.bound) { c.strokeStyle = tx().color; c.lineWidth = 2.5; c.setLineDash([3, 3]); c.beginPath(); c.arc(x, SITE_Y, 9, 0, 6.283); c.stroke(); c.setLineDash([]); }
+    if (d && d.kind === 'pore') xMark(c, x, POST_Y + 12);
+    if (d && d.kind === 'boost') { c.fillStyle = '#ffd54f'; c.strokeStyle = COL.edge; c.lineWidth = 1.5; c.beginPath(); c.arc(x - g / 2 - 28, POST_Y - 6, 7, 0, 6.283); c.fill(); c.stroke(); }
+  }
+
+  function drawMeta(c, r, R) {
+    const x = r.x;
+    c.fillStyle = COL.receptor; c.strokeStyle = COL.edge; c.lineWidth = 1;
+    for (let i = 0; i < 7; i++) { rrect(c, x - 31 + i * 9, POST_Y - 30, 7, 60, 3); c.fill(); c.stroke(); }
+    if (!r.bound) { c.strokeStyle = tx().color; c.lineWidth = 2.5; c.setLineDash([3, 3]); c.beginPath(); c.arc(x, SITE_Y, 9, 0, 6.283); c.stroke(); c.setLineDash([]); }
+
+    const ex = x + 52, on = clamp(r.e * 1.5, 0, 1);
+    c.fillStyle = COL.protein; c.strokeStyle = COL.edge; c.lineWidth = 1.5;
+    if (R.eff === 'GIRK') {
+      const g = 3 + 10 * on;
+      rrect(c, ex - g / 2 - 10, POST_Y - 22, 10, 46, 5); c.fill(); c.stroke(); rrect(c, ex + g / 2, POST_Y - 22, 10, 46, 5); c.fill(); c.stroke();
+    } else {
+      rrect(c, ex - 13, POST_Y - 20, 26, 44, 7); c.globalAlpha = 0.5 + 0.5 * on; c.fill(); c.globalAlpha = 1; c.stroke();
+    }
+
+    // the G-protein messenger slides over to its target
+    const gcol = COL[R.g], k = ease(r.a * 1.4);
+    const gx = x + (ex - x) * k * 0.8, gy = POST_Y + 46;
+    c.beginPath(); c.arc(gx, gy, 10, 0, 6.283); c.fillStyle = gcol; c.fill(); c.strokeStyle = COL.edge; c.lineWidth = 1.5; c.stroke();
+    label(c, 'G', gx, gy + 0.5, 11, '#fff', 'center', true);
+    if (r.e > 0.25 && R.eff !== 'GIRK') {
+      c.globalAlpha = clamp(r.e * 1.5, 0, 1);
+      label(c, R.amp > 0 ? '+' : '−', ex, POST_Y + 52, 22, R.amp > 0 ? '#c62828' : '#1565c0', 'center', true);
+      c.globalAlpha = 1;
+    }
+  }
+
+  function drawChart() {
+    const c = cctx, w = chw, h = chh, L = 74, Rp = 10, top = 10, bot = 22;
+    const vMin = -85, vMax = -35;
+    const px = t => L + (1 - (T - t) / TRACE_WIN) * (w - L - Rp);
+    const py = v => top + (1 - (clamp(v, vMin, vMax) - vMin) / (vMax - vMin)) * (h - top - bot);
+    c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
+    c.font = '12px Arial, sans-serif'; c.textBaseline = 'middle'; c.lineWidth = 1;
+
+    c.strokeStyle = '#999'; c.beginPath(); c.moveTo(L, py(-70)); c.lineTo(w - Rp, py(-70)); c.stroke();
+    c.strokeStyle = '#e53935'; c.setLineDash([6, 4]); c.beginPath(); c.moveTo(L, py(-55)); c.lineTo(w - Rp, py(-55)); c.stroke(); c.setLineDash([]);
+    c.strokeStyle = '#333'; c.beginPath(); c.moveTo(L, top); c.lineTo(L, h - bot); c.lineTo(w - Rp, h - bot); c.stroke();
+    c.textAlign = 'right'; c.fillStyle = '#333'; c.fillText('Resting', L - 6, py(-70));
+    c.fillStyle = '#c62828'; c.fillText('Fires here', L - 6, py(-55));
+    c.fillStyle = '#333'; c.textAlign = 'center'; c.fillText('Time →', (L + w) / 2, h - 8);
+
+    for (const m of marks) { const x = px(m); c.fillStyle = tx().color; c.strokeStyle = '#333'; c.beginPath(); c.moveTo(x, h - bot + 1); c.lineTo(x - 5, h - bot + 9); c.lineTo(x + 5, h - bot + 9); c.closePath(); c.fill(); c.stroke(); }
+    if (trace.length < 2) return;
+    c.beginPath(); trace.forEach((p, i) => i ? c.lineTo(px(p.t), py(p.v)) : c.moveTo(px(p.t), py(p.v)));
+    c.strokeStyle = '#1565c0'; c.lineWidth = 2.5; c.stroke();
+    for (const p of trace) if (p.s) {
+      const x = px(p.t); c.strokeStyle = '#d84315'; c.lineWidth = 3;
+      c.beginPath(); c.moveTo(x, py(-55)); c.lineTo(x, top); c.stroke();
+    }
+  }
+
+  // ---------- UI ----------
+  const $ = id => document.getElementById(id);
+  const PLAY_ICON = '<svg width="28" height="28" viewBox="0 0 28 28"><path d="M8 4 L24 14 L8 24 Z" fill="#123"/></svg>';
+  const PAUSE_ICON = '<svg width="28" height="28" viewBox="0 0 28 28"><rect x="6" y="4" width="6" height="20" fill="#123"/><rect x="16" y="4" width="6" height="20" fill="#123"/></svg>';
+  const STEP_TEXT = ['Signal arriving', 'Calcium rushing in', 'Releasing messenger', 'Messenger binding', 'Cell responding', 'Cleaning up'];
+
+  function buildTx() {
+    $('txList').innerHTML = '';
+    TX.forEach((t, i) => {
+      const l = document.createElement('label'); l.className = 'opt';
+      l.innerHTML = `<input type="radio" name="tx" ${i === txI ? 'checked' : ''}> <span class="sw" style="background:${t.color}"></span> ${t.name}`;
+      l.querySelector('input').addEventListener('change', () => { txI = i; rxI = 0; drugOn = false; reset(); render(); });
+      $('txList').appendChild(l);
+    });
+  }
+
+  function render() {
+    const t = tx(), R = rx(), d = t.drug;
+    $('rxList').innerHTML = '';
+    t.rx.forEach((r, i) => {
+      const l = document.createElement('label'); l.className = 'opt';
+      l.innerHTML = `<input type="radio" name="rx" ${i === rxI ? 'checked' : ''}> ${r.name} <span style="color:#555;font-size:14px">(${r.kind === 'iono' ? 'fast' : 'slow'})</span>`;
+      l.querySelector('input').addEventListener('change', () => { rxI = i; reset(); render(); });
+      $('rxList').appendChild(l);
+    });
+    const up = R.amp > 0;
+    $('rxNote').innerHTML = `${t.about} ${R.text} <span class="effect ${up ? 'up' : 'down'}">${up ? 'Excites' : 'Inhibits'} the cell.</span>`;
+    $('drugName').textContent = `Add ${d.name}`;
+    $('drug').checked = drugOn;
+    const target = d.rx ? t.rx.find(r => r.id === d.rx) : null;
+    $('drugNote').textContent = d.text + (target && target.id !== R.id ? ` Only works on ${target.name} receptors.` : '');
+    $('play').innerHTML = playing ? PAUSE_ICON : PLAY_ICON;
+    $('play').setAttribute('aria-label', playing ? 'Pause' : 'Play');
+  }
+
+  $('release').addEventListener('click', () => { release(); if (!playing) { playing = true; render(); } });
+  $('restart').addEventListener('click', () => { reset(); render(); });
+  $('play').addEventListener('click', () => { playing = !playing; render(); });
+  $('stepBtn').addEventListener('click', () => { playing = false; render(); for (let i = 0; i < 6; i++) step(1 / 60); draw(); });
+  document.querySelectorAll('input[name=speed]').forEach(r => r.addEventListener('change', () => { speed = +r.value; }));
+  $('drug').addEventListener('change', e => { drugOn = e.target.checked; render(); });
+  $('showLabels').addEventListener('change', e => { show.labels = e.target.checked; });
+  $('showIons').addEventListener('change', e => { show.ions = e.target.checked; });
+  $('autoFire').checked = auto;
+  $('autoFire').addEventListener('change', e => { auto = e.target.checked; nextAuto = T + 0.5; });
+  $('showChart').addEventListener('change', e => { $('chartbox').hidden = !e.target.checked; });
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLButtonElement)) { e.preventDefault(); release(); }
+  });
+
+  const stepEls = [...document.querySelectorAll('#steps li')];
+  function draw() {
+    drawScene(); drawChart();
+    const a = T - lastAP;
+    const active = [
+      a < 0.5,
+      a > 0.1 && a < 0.8,
+      ves.some(v => v.st === 'dock' || v.st === 'fuse'),
+      recs.some(r => r.bound),
+      Math.abs(V + 70) > 0.8 || recs.some(r => r.e > 0.08),
+      T - lastClear < 0.4,
+    ];
+    active.forEach((on, i) => stepEls[i].classList.toggle('on', on));
+    const cur = active.lastIndexOf(true);
+    $('stepNow').textContent = cur < 0 ? 'Waiting…' : STEP_TEXT[cur];
+    $('volt').textContent = V.toFixed(0).replace('-', '−');
+  }
+
+  buildTx(); reset(); render(); resize();
+  let last = performance.now();
+  function frame(now) {
+    let dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (playing) {
+      dt *= speed;
+      while (dt > 1e-6) { const h = Math.min(1 / 60, dt); step(h); dt -= h; }
+    }
+    draw();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
