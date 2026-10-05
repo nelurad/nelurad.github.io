@@ -80,6 +80,7 @@
     @keyframes nc-glow { to { filter: drop-shadow(0 0 7px #ff9a8a) drop-shadow(0 2px 3px rgba(0,0,0,.08)) hue-rotate(360deg); } }
     @keyframes nc-bob { 50% { translate: 0 -3px; } }
 
+    .neuro-course { margin-bottom: 2.6rem; }
     .nc-reveal { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .5s ease; }
     .nc-reveal > div { overflow: hidden; }
     .neuro-course.open .nc-reveal { grid-template-rows: 1fr; }
@@ -210,6 +211,7 @@
     </div>
   </div>
 </div>
+      </div>
 
       <div class="course">
         <div class="course-head">
@@ -307,6 +309,7 @@
     t += dur + 0.03;
   });
 })();
+</script>
 <script>
   document.querySelectorAll('.neuro-course').forEach(card => {
     const btn = card.querySelector('.nc-teaser');
