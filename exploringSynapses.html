@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Synapse Explorer</title>
+<title>Exploring Synapses</title>
 <style>
   body { margin: 0; background: #cdf5f5; font-family: Arial, Helvetica, sans-serif; color: #111; }
   .wrap { max-width: 1150px; margin: 0 auto; padding: 14px 16px 40px; }
@@ -62,7 +62,7 @@
 <body>
 <div class="wrap">
   <a class="back" href="/teaching.html">&larr; Back to Teaching</a>
-  <h1>Synapse Explorer</h1>
+  <h1>Exploring Synapses</h1>
   <p class="intro">Neurons talk to each other by releasing chemical messengers called neurotransmitters. Pick a messenger, press <b>Release</b>, and watch what happens to the cell that receives it.</p>
 
   <div class="sim">
@@ -144,7 +144,7 @@
       <li><b>Vesicles release the messenger.</b> Calcium makes the little bubbles (vesicles) fuse with the edge of the cell and spill out neurotransmitter.</li>
       <li><b>The messenger crosses the gap.</b> It drifts across the tiny gap between the cells (the synaptic cleft) and fits into receptors, like a key in a lock.</li>
       <li><b>The receiving cell responds.</b> Depending on the receptor, the cell gets a push toward firing (excited) or a nudge away from it (inhibited). Watch the voltage chart.</li>
-      <li><b>Clean-up.</b> Proteins pull the messenger back in or break it apart, so the signal doesn't last forever.</li>
+      <li><b>Clean-up.</b> Proteins pull the messenger back in or break it apart, so the signal doesn't last forever. (For glutamate, most of the clean-up is actually done by nearby support cells called astrocytes. The model shows it on the sending neuron to keep things simple.)</li>
     </ol>
 
     <h2>Try this</h2>
@@ -152,7 +152,7 @@
     <p>Pick <b>Serotonin</b> and turn on the drug (an SSRI, a common antidepressant). Watch how long the messenger hangs around in the gap.</p>
 
     <h2>Keep in mind</h2>
-    <p>This is a simplified model. Real synapses work about 100 times faster than shown here, a single synapse changes the voltage much less, and real cells carry many kinds of receptors at once.</p>
+    <p>This is a simplified model. Real synapses work hundreds of times faster than shown here, a single synapse changes the voltage much less, and real cells carry many kinds of receptors at once.</p>
   </div>
 
   <footer>Made by Nelu Radpour for Introduction to Neuroscience (PSB 2000), Florida State University.</footer>
@@ -165,11 +165,11 @@
     { id: 'glu', name: 'Glutamate', color: '#e53935',
       about: 'The brain’s main "go" signal.',
       clear: 'reuptake',
-      drug: { name: 'ketamine', kind: 'pore', rx: 'ampa', text: 'Blocks the receptor’s channel, so even with glutamate bound, nothing gets through. (In real life ketamine blocks a related receptor called NMDA.)' },
+      drug: { name: 'perampanel', kind: 'pore', rx: 'ampa', text: 'An epilepsy medicine that blocks AMPA receptors, so even with glutamate bound, the channel stays shut and sodium can’t get in. Calming this fast "go" signal helps prevent seizures.' },
       rx: [
         { id: 'ampa', name: 'AMPA', kind: 'iono', ions: [['Na', 'in']], amp: 17, tau: 0.03,
           text: 'A fast ion channel. Sodium rushes in and excites the cell.' },
-        { id: 'mglu', name: 'mGluR', kind: 'meta', g: 'Gq', eff: 'PLC', amp: 6,
+        { id: 'mglu', name: 'mGluR5', kind: 'meta', g: 'Gq', eff: 'PLC', amp: 6,
           text: 'A slow receptor. It starts a chain reaction inside the cell that gently excites it.' },
       ] },
     { id: 'gaba', name: 'GABA', color: '#1e88e5',
@@ -189,7 +189,7 @@
       rx: [
         { id: 'nic', name: 'Nicotinic', kind: 'iono', ions: [['Na', 'in'], ['Na', 'in'], ['K', 'out']], amp: 17, tau: 0.03,
           text: 'A fast ion channel. This is how nerves tell muscles to contract. Nicotine acts here too.' },
-        { id: 'm2', name: 'Muscarinic', kind: 'meta', g: 'Gi', eff: 'GIRK', amp: -7,
+        { id: 'm2', name: 'Muscarinic (M2)', kind: 'meta', g: 'Gi', eff: 'GIRK', amp: -7,
           text: 'A slow receptor. In the heart, it slows the heartbeat down.' },
       ] },
     { id: 'da', name: 'Dopamine', color: '#8e24aa',
