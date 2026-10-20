@@ -1,5 +1,6 @@
 /* Indigo-style theme (based on Indigo by Kopplin) */
 :root {
+  color-scheme: light dark;   /* tells the browser this site handles dark mode itself */
   --text: #666;
   --heading: #222;
   --muted: #575757;
@@ -11,18 +12,18 @@
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --text: #aaa;
-    --heading: #ededed;
-    --muted: #999;
-    --accent: #c9a27e;
-    --line: #222;
-    --bg: #000;
-    --icon: #fff;
+    --text: #c9c9c9;      /* was #aaa — too faint with thin weights */
+    --heading: #f2f2f2;
+    --muted: #a6a6a6;     /* was #999 */
+    --accent: #d9b590;
+    --line: #333;         /* was #222 — borders were invisible */
+    --bg: #121212;        /* soft black reads better than pure #000 */
+    --icon: #f2f2f2;
     --thin: 400;
   }
 }
 
-html { font-size: 62.5%; }
+html { font-size: 62.5%; background: var(--bg); }
 body {
   margin: 0;
   font: 16px "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -33,8 +34,8 @@ body {
 h1, h2, h3 { color: var(--heading); text-rendering: optimizeLegibility; }
 h1 { font-size: 3rem; letter-spacing: -1px; font-weight: 700; }
 a { color: var(--accent); font-weight: var(--thin); }
-p { line-height: 1.7; font-weight: 300; margin: 0 0 20px; letter-spacing: 0.4px; font-size: 1.6rem; }
-ul li { line-height: 2.4rem; font-weight: 300; }
+p { line-height: 1.7; font-weight: var(--thin); margin: 0 0 20px; letter-spacing: 0.4px; font-size: 1.6rem; }
+ul li { line-height: 2.4rem; font-weight: var(--thin); }
 
 .wrapper { max-width: 680px; width: 90%; margin: 0 auto; }
 @media (max-width: 600px) { .wrapper { width: auto; margin: 0 20px; } }
@@ -79,8 +80,8 @@ ul li { line-height: 2.4rem; font-weight: 300; }
 .page { margin-top: 125px; }
 @media (max-width: 780px) { .page { margin-top: 90px; } }
 .page > h1 { text-align: center; margin-bottom: 6rem; }
-   .page p { text-align: center; }
-.news-item { display: flex; gap: 20px; margin-bottom: 18px; font-size: 1.6rem; line-height: 1.7; font-weight: 300; }
+.page p { text-align: center; }
+.news-item { display: flex; gap: 20px; margin-bottom: 18px; font-size: 1.6rem; line-height: 1.7; font-weight: var(--thin); }
 .news-item .date { flex: 0 0 90px; color: var(--muted); font-weight: 400; }
 
 /* ---------- Footer ---------- */
@@ -104,7 +105,7 @@ ul li { line-height: 2.4rem; font-weight: 300; }
 .research li {
   font-size: 1.6rem;
   line-height: 1.7;
-  font-weight: 300;
+  font-weight: var(--thin);
   letter-spacing: 0.4px;
   color: var(--text);
   margin-bottom: 8px;
@@ -114,7 +115,24 @@ ul li { line-height: 2.4rem; font-weight: 300; }
 .social-links a:hover .img-icon { opacity: .6; }
 @media (prefers-color-scheme: dark) { .social-links .img-icon { filter: invert(1); } }
 
-   /* floating network background */
-   .bg-network { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
+/* floating network background */
+.bg-network { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
 
-   .social-links a[title="Email"] svg { width: 21px; height: 21px; }
+.social-links a[title="Email"] svg { width: 21px; height: 21px; }
+
+/* ---------- Dark-mode fixes for the teaching page ----------
+   teaching.html hard-codes a white background on the "Check out some
+   interactive visualizations" bubble, while its text uses var(--heading),
+   which turns near-white in dark mode → white text on white.
+   These selectors are more specific than the ones in teaching.html,
+   so they win even though that <style> block loads later. */
+@media (prefers-color-scheme: dark) {
+  .page.teaching .nc-teaser,
+  .page.teaching .nc-teaser::before,
+  .page.teaching .nc-teaser::after { background: #262626; }
+  .page.teaching .nc-teaser { color: var(--heading); }
+
+  .page.teaching .nc-cloud.soon,
+  .page.teaching .nc-cloud.soon::before,
+  .page.teaching .nc-cloud.soon::after { background: #262626; color: #888; }
+}
