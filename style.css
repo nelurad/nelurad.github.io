@@ -37,18 +37,18 @@ body {
    Tweak --shift-speed to make it faster/slower, and the --blob colors
    (and their alpha) to make it bolder or subtler. */
 :root {
-  --blob1: rgba(255, 170, 200, .55);   /* pink   */
-  --blob2: rgba(150, 190, 255, .55);   /* blue   */
-  --blob3: rgba(255, 210, 150, .50);   /* peach  */
-  --blob4: rgba(180, 160, 255, .50);   /* violet */
-  --shift-speed: 40s;
+  --blob1: rgba(150, 185, 235, .35);   /* soft blue        */
+  --blob2: rgba(180, 165, 240, .32);   /* lavender         */
+  --blob3: rgba(225, 190, 155, .30);   /* warm sand (ties to your accent) */
+  --blob4: rgba(160, 200, 210, .30);   /* slate teal       */
+  --shift-speed: 60s;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --blob1: rgba(200, 60, 130, .30);
-    --blob2: rgba(50, 110, 220, .30);
-    --blob3: rgba(220, 130, 50, .25);
-    --blob4: rgba(120, 80, 230, .30);
+    --blob1: rgba(60, 110, 200, .20);
+    --blob2: rgba(110, 80, 210, .20);
+    --blob3: rgba(190, 130, 70, .15);
+    --blob4: rgba(60, 140, 160, .18);
   }
 }
 body::before {
@@ -60,17 +60,14 @@ body::before {
     radial-gradient(40% 50% at 80% 20%, var(--blob2), transparent 70%),
     radial-gradient(45% 45% at 75% 80%, var(--blob3), transparent 70%),
     radial-gradient(40% 40% at 25% 80%, var(--blob4), transparent 70%);
-  animation:
-    bg-drift var(--shift-speed) ease-in-out infinite alternate,
-    bg-hue calc(var(--shift-speed) * 1.5) linear infinite;
-  will-change: transform, filter;
+  animation: bg-drift var(--shift-speed) ease-in-out infinite alternate;
+  will-change: transform;
 }
 @keyframes bg-drift {
   0%   { transform: translate(0, 0) rotate(0deg) scale(1); }
   50%  { transform: translate(5%, -4%) rotate(10deg) scale(1.1); }
   100% { transform: translate(-4%, 5%) rotate(-8deg) scale(1); }
 }
-@keyframes bg-hue { to { filter: hue-rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) {
   body::before { animation: none; }
 }
