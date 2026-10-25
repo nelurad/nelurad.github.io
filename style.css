@@ -251,3 +251,39 @@ ul li { line-height: 2.4rem; font-weight: var(--thin); }
 @media (prefers-reduced-motion: reduce) {
   .tagline .role, .tagline .cute-star, .tagline .cute-star .glint { animation: none; }
 }
+
+/* ---------- Home nav: gold glimmer + big bold hover ---------- */
+.nav-home a {
+  font-weight: 500;
+  background: linear-gradient(100deg,
+    #8d6a4c 0%, #a8834f 35%, #e9c46a 47%, #fff1c1 50%, #e9c46a 53%, #a8834f 65%, #8d6a4c 100%);
+  background-size: 300% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+  animation: nav-glimmer 6s ease-in-out infinite;
+  transition: transform .25s cubic-bezier(.34,1.56,.64,1), filter .25s ease;
+  will-change: transform;
+}
+.nav-home li:nth-child(2) a { animation-delay: .6s; }
+@keyframes nav-glimmer {
+  0%, 25%   { background-position: 100% 0; }
+  65%, 100% { background-position: 0% 0; }
+}
+.nav-home a:hover,
+.nav-home a:focus-visible {
+  color: transparent;
+  font-weight: 700;
+  transform: scale(1.25);
+  filter: drop-shadow(0 0 4px rgba(240, 200, 100, .45));
+  animation-duration: 1.6s;
+}
+@media (prefers-color-scheme: dark) {
+  .nav-home a {
+    background-image: linear-gradient(100deg,
+      #d9b590 0%, #e8c98e 35%, #f6dc8f 47%, #fffbe8 50%, #f6dc8f 53%, #e8c98e 65%, #d9b590 100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-home a { animation: none; background-position: 50% 0; }
+  .nav-home a:hover { transform: none; }
+}
