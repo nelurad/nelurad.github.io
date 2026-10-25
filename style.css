@@ -220,21 +220,18 @@ ul li { line-height: 2.4rem; font-weight: var(--thin); }
 .tagline .lab a { color: var(--accent); text-decoration: none; }
 .tagline .lab a:hover { text-decoration: underline; }
 
-/* cute little star that glimmers */
-.tagline .cute-star {
-  display: inline-block; width: 2.4rem; height: 2.4rem; margin: 0 6px; vertical-align: -0.6rem; overflow: visible;
-  animation: star-wobble 3.2s ease-in-out infinite;
+/* little gold sparkle that glimmers */
+.tagline .sparkle {
+  display: inline-block; width: 1.7rem; height: 1.7rem; margin: 0 8px; vertical-align: -0.2rem;
+  fill: #d9a93a;
+  animation: sparkle-glimmer 2.8s ease-in-out infinite;
 }
-.tagline .cute-star .glint { transform-box: fill-box; transform-origin: center; animation: star-glint 3.2s ease-in-out infinite; }
-@keyframes star-wobble {
-  0%, 100% { transform: rotate(-6deg) translateY(0); filter: drop-shadow(0 1px 1px rgba(180,120,0,.25)); }
-  50%      { transform: rotate(6deg) translateY(-2px); filter: drop-shadow(0 0 5px rgba(255,210,80,.75)); }
+@keyframes sparkle-glimmer {
+  0%, 100% { transform: scale(.8) rotate(0deg);   opacity: .7; filter: none; }
+  50%      { transform: scale(1.1) rotate(45deg); opacity: 1;  filter: drop-shadow(0 0 4px rgba(240, 200, 90, .9)); }
 }
-@keyframes star-glint {
-  0%, 35%, 100% { scale: 0; opacity: 0; }
-  50%           { scale: 1.2; opacity: 1; }
-  65%           { scale: 0; opacity: 0; }
-}
+@media (prefers-color-scheme: dark) { .tagline .sparkle { fill: #f0c75e; } }
+@media (prefers-reduced-motion: reduce) { .tagline .sparkle { animation: none; } }
 
 /* FSU wordmark */
 .tagline .fsu-logo { height: 1.4rem; width: auto; vertical-align: -0.15rem; margin-left: 2px; }
