@@ -220,19 +220,30 @@ ul li { line-height: 2.4rem; font-weight: var(--thin); }
 .tagline .lab a { color: var(--accent); text-decoration: none; }
 .tagline .lab a:hover { text-decoration: underline; }
 
-/* little gold sparkle that glimmers */
-.tagline .sparkle {
-  display: inline-block; width: 1.7rem; height: 1.7rem; margin: 0 8px; vertical-align: -0.2rem;
-  fill: #d9a93a;
-  animation: sparkle-glimmer 2.8s ease-in-out infinite;
+/* little spiral sun that shines */
+.tagline .sun {
+  display: inline-block; width: 2.6rem; height: 2.6rem; margin: 0 8px; vertical-align: -0.65rem; overflow: visible;
 }
-@keyframes sparkle-glimmer {
-  0%, 100% { transform: scale(.8) rotate(0deg);   opacity: .7; filter: none; }
-  50%      { transform: scale(1.1) rotate(45deg); opacity: 1;  filter: drop-shadow(0 0 4px rgba(240, 200, 90, .9)); }
+.tagline .sun .ray {
+  transform-box: fill-box; transform-origin: 50% 100%;
+  animation: sun-ray 2.4s ease-in-out infinite;
 }
-@media (prefers-color-scheme: dark) { .tagline .sparkle { fill: #f0c75e; } }
-@media (prefers-reduced-motion: reduce) { .tagline .sparkle { animation: none; } }
-
+.tagline .sun .r1 { animation-delay: .3s; }  .tagline .sun .r2 { animation-delay: .6s; }
+.tagline .sun .r3 { animation-delay: .9s; }  .tagline .sun .r4 { animation-delay: 1.2s; }
+.tagline .sun .r5 { animation-delay: 1.5s; } .tagline .sun .r6 { animation-delay: 1.8s; }
+.tagline .sun .r7 { animation-delay: 2.1s; }
+@keyframes sun-ray {
+  0%, 100% { opacity: .75; scale: .85; }
+  50%      { opacity: 1;   scale: 1.15; }
+}
+.tagline .sun .halo { transform-box: fill-box; transform-origin: center; animation: sun-halo 2.4s ease-in-out infinite; }
+@keyframes sun-halo {
+  0%, 100% { opacity: .35; scale: .85; }
+  50%      { opacity: .9;  scale: 1.1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tagline .sun .ray, .tagline .sun .halo { animation: none; }
+}
 /* FSU wordmark */
 .tagline .fsu-logo { height: 1.4rem; width: auto; vertical-align: -0.15rem; margin-left: 2px; }
 @media (prefers-color-scheme: dark) {
