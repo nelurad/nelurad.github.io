@@ -1,14 +1,14 @@
 /* Indigo-style theme (based on Indigo by Kopplin) */
 :root {
   color-scheme: light dark;   /* tells the browser this site handles dark mode itself */
-  --text: #666;
-  --heading: #222;
-  --muted: #575757;
-  --accent: #8d6a4c;
-  --line: #ededed;
+  --text: #3d3d45;      /* darker so it reads clearly over the sky background */
+  --heading: #1e1e24;
+  --muted: #4a4a55;
+  --accent: #7a5a3e;
+  --line: rgba(60, 60, 90, .18);
   --bg: #fff;
   --icon: #000;
-  --thin: 300;
+  --thin: 400;          /* was 300 (light) — too thin over the sky */
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -133,7 +133,7 @@ ul li { line-height: 2.4rem; font-weight: var(--thin); }
 .footer-main::before {
   content: ""; position: absolute; top: -5px; left: 50%; margin-left: -5px;
   width: 7px; height: 7px; border: 1px solid var(--line); border-radius: 3px;
-  background: var(--bg); box-shadow: var(--bg) 0 0 0 5px;
+  background: transparent;
 }
 .footer-main p { font-size: 1.3rem; margin: 0; }
 
