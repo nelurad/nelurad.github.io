@@ -196,22 +196,18 @@ ul li { line-height: 2.4rem; font-weight: var(--thin); }
 .tagline { margin: 0 auto 30px; text-align: center; }
 .tagline p { margin: 0; text-align: center; letter-spacing: 0.3px; }
 
-/* main line: italic with a very gentle sparkle sweeping across */
-.tagline .role {
-  font-size: 2.3rem; font-style: italic; font-weight: 400;
-  margin-bottom: 10px;
-  background: linear-gradient(100deg,
-    var(--heading) 0%, var(--heading) 40%,
-    #b9a2e8 47%, #f3d9a4 50%, #9cc4f0 53%,
-    var(--heading) 60%, var(--heading) 100%);
-  background-size: 250% 100%;
-  -webkit-background-clip: text; background-clip: text;
-  color: transparent;
-  animation: role-shimmer 7s ease-in-out infinite;
+/* main line: small handwritten all-caps label under the name */
+@font-face {
+  font-family: 'Patrick Hand';
+  src: url('fonts/patrick-hand.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
 }
-@keyframes role-shimmer {
-  0%, 30%  { background-position: 100% 0; }
-  70%, 100% { background-position: 0% 0; }
+.tagline .role {
+  font-family: 'Patrick Hand', 'Comic Sans MS', cursive;
+  font-size: 1.5rem; font-weight: 400; letter-spacing: .3px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: -8px 0 10px;
 }
 
 .tagline .phd { font-size: 1.6rem; color: var(--muted); font-weight: var(--thin); margin-bottom: 6px; }
@@ -251,7 +247,6 @@ ul li { line-height: 2.4rem; font-weight: var(--thin); }
 }
 
 @media (max-width: 480px) {
-  .tagline .role { font-size: 2rem; }
   .tagline .phd { font-size: 1.35rem; }
   .tagline .lab { font-size: 1.3rem; }
 }
