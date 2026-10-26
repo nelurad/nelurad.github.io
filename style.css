@@ -204,10 +204,10 @@ ul li { line-height: 2.4rem; font-weight: var(--thin); }
 }
 .tagline .role {
   font-family: 'Patrick Hand', 'Comic Sans MS', cursive;
-  font-size: 1.5rem; font-weight: 400; letter-spacing: .3px;
+  font-size: 2rem; font-weight: 400; letter-spacing: .8px;
   text-transform: uppercase;
   color: var(--accent);
-  margin: -8px 0 10px;
+  margin: -6px 0 12px;
 }
 
 .tagline .phd { font-size: 1.6rem; color: var(--muted); font-weight: var(--thin); margin-bottom: 6px; }
@@ -247,6 +247,7 @@ ul li { line-height: 2.4rem; font-weight: var(--thin); }
 }
 
 @media (max-width: 480px) {
+  .tagline .role { font-size: 1.7rem; letter-spacing: .4px; }
   .tagline .phd { font-size: 1.35rem; }
   .tagline .lab { font-size: 1.3rem; }
 }
