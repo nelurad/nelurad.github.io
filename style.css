@@ -276,6 +276,3 @@ ul li { line-height: 2.4rem; font-weight: var(--thin); }
 @media (prefers-reduced-motion: reduce) {
   .nav-home a:hover { transform: none; }
 }
-
-/* lab + department lines under the home tagline */
-.tagline .lab + .lab { margin-top: 4px; }
