@@ -241,7 +241,7 @@ ul li { line-height: 2.4rem; font-weight: var(--thin); }
   .tagline .sun .ray, .tagline .sun .halo { animation: none; }
 }
 /* FSU wordmark */
-.tagline .fsu-logo { height: 1.4rem; width: auto; vertical-align: -0.15rem; margin-left: 2px; }
+.tagline .fsu-logo { height: .74em; width: auto; vertical-align: baseline; margin-left: 3px; }
 @media (prefers-color-scheme: dark) {
   .tagline .fsu-logo { filter: brightness(1.35) saturate(1.1); }
 }
