@@ -276,3 +276,11 @@ ul li { line-height: 2.4rem; font-weight: var(--thin); }
 @media (prefers-reduced-motion: reduce) {
   .nav-home a:hover { transform: none; }
 }
+
+/* social icons grow a little on hover */
+.social-links svg, .social-links .img-icon { transition: color .2s, opacity .2s, transform .25s ease; }
+.social-links a:hover svg, .social-links a:focus-visible svg,
+.social-links a:hover .img-icon, .social-links a:focus-visible .img-icon { transform: scale(1.2); }
+@media (prefers-reduced-motion: reduce) {
+  .social-links svg, .social-links .img-icon { transition: none; }
+}
