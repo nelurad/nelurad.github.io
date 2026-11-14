@@ -4,9 +4,10 @@
   var canvas = document.createElement('canvas');
   canvas.className = 'bg-network';
   canvas.setAttribute('aria-hidden', 'true');
+  canvas.style.imageRendering = 'pixelated';
   document.body.prepend(canvas);
   var ctx = canvas.getContext('2d');
-  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var dpr = 1;  // tiles are chunky by design, so draw at 1x and let CSS scale it (4x less work on Retina)
   var still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var darkMq = window.matchMedia('(prefers-color-scheme: dark)');
 
@@ -17,6 +18,19 @@
 
   var W, H, cols, rows, small, sctx, img, gapPattern;
   var mouse = { x: -1e4, y: -1e4, s: 0 };
+  // performance: the colors drift slowly, so ~20 redraws a second looks the same as 60;
+  // the animation also pauses after a few seconds without mouse/touch/scroll activity
+  var FRAME_MS = 50, IDLE_MS = 8000;
+  var lastDraw = 0, lastInput = performance.now(), running = false;
+  function wake() {
+    lastInput = performance.now();
+    if (!running && !still && !document.hidden) { running = true; requestAnimationFrame(loop); }
+  }
+  function loop(now) {
+    if (still || document.hidden || now - lastInput > IDLE_MS) { running = false; return; }
+    if (now - lastDraw >= FRAME_MS) { lastDraw = now; frame(now); }
+    requestAnimationFrame(loop);
+  }
 
   function resize() {
     W = window.innerWidth; H = window.innerHeight;
@@ -78,14 +92,16 @@
     ctx.globalCompositeOperation = 'destination-out';  // cut the little gaps between tiles
     ctx.fillStyle = gapPattern; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.globalCompositeOperation = 'source-over';
-    if (!still && !document.hidden) requestAnimationFrame(frame);
   }
 
-  window.addEventListener('mousemove', function (e) { mouse.x = e.clientX; mouse.y = e.clientY; if (still) frame(performance.now()); });
+  window.addEventListener('mousemove', function (e) { mouse.x = e.clientX; mouse.y = e.clientY; if (still) frame(performance.now()); else wake(); });
   window.addEventListener('mouseout', function (e) { if (!e.relatedTarget) { mouse.x = mouse.y = -1e4; } });
-  window.addEventListener('touchmove', function (e) { var p = e.touches[0]; mouse.x = p.clientX; mouse.y = p.clientY; }, { passive: true });
+  window.addEventListener('touchmove', function (e) { var p = e.touches[0]; mouse.x = p.clientX; mouse.y = p.clientY; wake(); }, { passive: true });
+  window.addEventListener('touchstart', wake, { passive: true });
+  window.addEventListener('scroll', wake, { passive: true });
+  window.addEventListener('keydown', wake);
   window.addEventListener('touchend', function () { mouse.x = mouse.y = -1e4; });
-  window.addEventListener('resize', function () { resize(); if (still) frame(performance.now()); });
-  document.addEventListener('visibilitychange', function () { if (!document.hidden && !still) requestAnimationFrame(frame); });
-  resize(); requestAnimationFrame(frame);
+  window.addEventListener('resize', function () { resize(); frame(performance.now()); wake(); });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) wake(); });
+  resize(); frame(performance.now()); wake();
 })();
