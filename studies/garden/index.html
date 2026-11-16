@@ -13,11 +13,12 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-rounded,"SF P
 header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
 h1{font-size:20px;font-weight:600;margin:0}
 h2{font-size:17px;font-weight:600;margin:0 0 8px}
+h3{font-size:15px;font-weight:600;margin:18px 0 6px}
 .chips{display:flex;gap:8px}
-.chip{background:#fff;border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px}
+.chip{background:#fff;border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px;font-variant-numeric:tabular-nums}
 .stage{position:relative;border-radius:20px;overflow:hidden;background:#e9e1d2;border:1px solid var(--line);aspect-ratio:1/1;touch-action:none;cursor:none}
 canvas#arena{position:absolute;inset:0;width:100%;height:100%;display:block}
-.toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:rgba(43,42,40,.86);color:#fff;padding:7px 14px;border-radius:999px;font-size:14px;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:rgba(43,42,40,.86);color:#fff;padding:7px 14px;border-radius:999px;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1}
 .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(246,243,238,.95);padding:16px;cursor:default}
 .overlay[hidden]{display:none}
@@ -36,17 +37,15 @@ button:focus-visible{outline:2px solid #2b2a28;outline-offset:2px}
 .note{font-size:13px;color:var(--muted);margin:10px 0 0}
 #research{margin-top:28px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}
 #research[hidden]{display:none}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0 16px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0 6px}
 .stat{border:1px solid var(--line);border-radius:12px;padding:10px 12px}
 .stat .n{font-size:22px;font-weight:600}
 .stat .l{font-size:13px;color:var(--muted)}
-.thumbs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.thumbs figure{margin:0}
-.thumbs canvas{width:100%;height:auto;display:block;border-radius:10px;border:1px solid var(--line)}
-.thumbs figcaption{font-size:12px;color:var(--muted);text-align:center;margin-top:2px}
-table{border-collapse:collapse;width:100%;font-size:13px;margin-top:16px}
-th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
-th{color:var(--muted);font-weight:500}
+.bars{display:grid;grid-template-columns:120px 1fr 64px;gap:4px 10px;align-items:center;font-size:13px}
+.bar{height:14px;background:#efe9df;border-radius:7px;overflow:hidden;position:relative}
+.bar i{position:absolute;inset:0 auto 0 0;background:#c9a24a;border-radius:7px}
+.bar b{position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:#6f6b64}
+.muted{color:var(--muted)}
 #csvOut{width:100%;height:120px;font-family:ui-monospace,Menlo,monospace;font-size:12px;margin-top:10px;border:1px solid var(--line);border-radius:8px;padding:8px}
 .msg{font-size:13px;color:var(--muted);margin-top:6px;min-height:1.2em}
 </style>
@@ -55,10 +54,10 @@ th{color:var(--muted);font-weight:500}
 <div class="wrap">
   <header>
     <h1>Garden mouse</h1>
-    <div class="chips"><div class="chip" id="cageChip">Practice garden</div><div class="chip">Snacks <span id="snacks">0</span></div></div>
+    <div class="chips"><div class="chip" id="trialChip">Practice</div><div class="chip">Points <span id="points">0</span></div></div>
   </header>
   <div class="stage" id="stage">
-    <canvas id="arena" aria-label="Top-down view of a sandy garden with a mouse, four sculptures and snacks"></canvas>
+    <canvas id="arena" aria-label="Top-down view of a garden with a mouse, two sculptures and two prizes"></canvas>
     <div class="toast" id="toast" role="status"></div>
     <div class="overlay" id="ov"><div class="panel" id="panel"></div></div>
   </div>
@@ -68,12 +67,11 @@ th{color:var(--muted);font-weight:500}
     <h2>Researcher view</h2>
     <p class="note" style="margin-top:0" id="saveStatus"></p>
     <div class="stats" id="stats"></div>
-    <p class="note">Each garden with the mouse's path. Orange = sharp shape, green = round shape, number = order the snack next to it was eaten. Shapes with the same letter are twins.</p>
-    <div class="thumbs" id="thumbs"></div>
-    <table id="table"></table>
+    <p class="note">How often a side was chosen, by its features. 50% (the line) means the feature made no difference. One person's data is noisy; this is a check that everything is recorded.</p>
+    <div id="featureBars"></div>
     <div class="row">
       <button class="secondary" id="copyJson">Copy full data file (JSON)</button>
-      <button class="secondary" id="copyTrials">Copy garden summary CSV</button>
+      <button class="secondary" id="copyTrials">Copy trials CSV</button>
       <button class="secondary" id="restart">Run again</button>
     </div>
     <div class="msg" id="copyMsg"></div>
@@ -86,20 +84,22 @@ th{color:var(--muted);font-weight:500}
 /* ============ STUDY SETTINGS: fill these in before collecting real data ============ */
 const DATAPIPE_ID='';            // DataPipe experiment ID (pipe.jspsych.org). Empty = nothing is saved (pilot mode).
 const COMPLETION_URL='';         // Prolific completion link, e.g. https://app.prolific.com/submissions/complete?cc=XXXXXXX
-const VERSION='garden-abstract-v1';
+const BONUS_CENTS_PER_POINT=0;   // 0 = points only. Set (e.g. 1) only once your IRB and budget allow a performance bonus.
+const N_TRIALS=60, N_PRACTICE=3, BREAK_AFTER=30;
+const VERSION='garden-choice-v2';
 /* ================================================================================== */
 
-const S=600,C=S/2,AR=262,N_CAGES=8;
-const SHAPE_R=34, MOUSE_R=13, SPEED=1.7, NIBBLE_MS=380, NEAR=100;   // NEAR: px from a shape's centre that counts as 'near' (same for both twins)
-const SLOT_ANG=[45,135,225,315].map(a=>a*Math.PI/180), SLOT_D=145;
-const FOODS=['cheese','strawberry','blueberries','seeds','cracker','apple'];
-const FOOD_NAME={cheese:'cheese',strawberry:'a strawberry',blueberries:'blueberries',seeds:'sunflower seeds',cracker:'a cracker',apple:'an apple slice'};
+const S=600,C=S/2,AR=262;
+const OBST_R=40, PRIZE_R=13, MOUSE_R=13, SPEED=2.2, NIBBLE_MS=260, TIMEOUT_MS=15000;
+const START={x:C,y:C+205}, POS={left:{x:C-122,y:C-55},right:{x:C+122,y:C-55}};
+const SHARP_LEVELS=[0,1/3,2/3,1], COUNTS=[6,9,12], DEPTHS=['shallow','deep'], PRIZE_SHAPES=['round','sharp'];
 const STONES=[['#b9a99a','#8f7f70','#d9cdbf'],['#a3abb8','#7b8494','#c9d0da'],['#b7a6b9','#8c7b8f','#d6cad8'],['#a9b5a2','#7f8c79','#cbd5c5'],['#c2ad94','#97836b','#ddd0be']];
+const PRIZE_COL=['#7d6bb3','#5b4a94','#b3a6dd'];   // one plain colour for every prize, so value comes only from the number
 
 const cv=document.getElementById('arena'),ctx=cv.getContext('2d'),stage=document.getElementById('stage');
 const dpr=Math.min(2,window.devicePixelRatio||1);cv.width=S*dpr;cv.height=S*dpr;ctx.scale(dpr,dpr);
 const ov=document.getElementById('ov'),panel=document.getElementById('panel'),toastEl=document.getElementById('toast');
-const cageChip=document.getElementById('cageChip'),snacksEl=document.getElementById('snacks');
+const trialChip=document.getElementById('trialChip'),pointsEl=document.getElementById('points');
 const RESEARCHER=(()=>{try{return location.hash==='#researcher';}catch(e){return false;}})();
 const params=(()=>{try{return new URLSearchParams(location.search);}catch(e){return new URLSearchParams();}})();
 const PID=params.get('PROLIFIC_PID')||'test-'+Math.random().toString(36).slice(2,8);
@@ -109,183 +109,162 @@ const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const rand=(a,b)=>a+Math.random()*(b-a);
 const r3=v=>Math.round(v*1000)/1000;
+const balanced=(levels,n)=>shuffle(Array.from({length:n},(_,i)=>levels[i%levels.length]));
 
 /* ---------- sand ---------- */
-function makeBed(){
-  const bed=document.createElement('canvas');bed.width=S*dpr;bed.height=S*dpr;const b=bed.getContext('2d');b.scale(dpr,dpr);
-  b.fillStyle='#e9e1d2';b.fillRect(0,0,S,S);
-  b.save();b.beginPath();b.arc(C,C,AR,0,Math.PI*2);b.clip();b.fillStyle='#ead7b0';b.fillRect(0,0,S,S);
-  for(let i=0;i<2400;i++){const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random())*AR;
-    b.fillStyle=['rgba(205,175,125,.35)','rgba(245,230,200,.6)','rgba(180,150,105,.25)'][i%3];b.fillRect(C+r*Math.cos(a),C+r*Math.sin(a),1.6,1.6);}
-  b.restore();
-  b.lineWidth=14;b.strokeStyle='rgba(255,255,255,.7)';b.beginPath();b.arc(C,C,AR+7,0,Math.PI*2);b.stroke();
+const bed=(()=>{const c=document.createElement('canvas');c.width=S*dpr;c.height=S*dpr;const b=c.getContext('2d');b.scale(dpr,dpr);
+  b.fillStyle='#e9e1d2';b.fillRect(0,0,S,S);b.save();b.beginPath();b.arc(C,C,AR,0,Math.PI*2);b.clip();b.fillStyle='#ead7b0';b.fillRect(0,0,S,S);
+  for(let i=0;i<2400;i++){const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random())*AR;b.fillStyle=['rgba(205,175,125,.35)','rgba(245,230,200,.6)','rgba(180,150,105,.25)'][i%3];b.fillRect(C+r*Math.cos(a),C+r*Math.sin(a),1.6,1.6);}
+  b.restore();b.lineWidth=14;b.strokeStyle='rgba(255,255,255,.7)';b.beginPath();b.arc(C,C,AR+7,0,Math.PI*2);b.stroke();
   b.lineWidth=1.5;b.strokeStyle='#d3c6ad';b.beginPath();b.arc(C,C,AR+14,0,Math.PI*2);b.stroke();b.beginPath();b.arc(C,C,AR,0,Math.PI*2);b.stroke();
-  return bed;
-}
+  b.fillStyle='rgba(120,95,60,.18)';b.beginPath();b.ellipse(START.x,START.y+8,22,12,0,0,Math.PI*2);b.fill();return c;})();
 
-/* ---------- shape twins: same control points, angular vs curved, equal area ---------- */
-function makeBase(){
-  const n=7+Math.floor(Math.random()*4),ph=Math.random()*Math.PI*2,pts=[];
-  for(let i=0;i<2*n;i++){const a=ph+i*Math.PI/n+rand(-.12,.12),r=i%2===0?rand(.85,1.15):rand(.5,.68);pts.push([r*Math.cos(a),r*Math.sin(a)]);}
+/* ---------- shapes: control points + a sharpness dial (0 = fully curved, 1 = fully angular), scaled to equal area ---------- */
+function makeBase(count,depth){
+  const ph=Math.random()*Math.PI*2,inner=depth==='deep'?rand(.46,.52):depth==='none'?.97:rand(.7,.76),pts=[];
+  for(let i=0;i<2*count;i++){const a=ph+i*Math.PI/count+(depth==='none'?0:rand(-.05,.05)),r=depth==='none'?(i%2?inner:1):(i%2?inner*rand(.96,1.04):rand(.93,1.07));pts.push([r*Math.cos(a),r*Math.sin(a)]);}
   return pts;
 }
-function outline(pts,kind){ // dense boundary polygon (unit scale)
-  if(kind==='sharp')return pts.flatMap((p,i)=>{const q=pts[(i+1)%pts.length],o=[];for(let t=0;t<6;t++)o.push([p[0]+(q[0]-p[0])*t/6,p[1]+(q[1]-p[1])*t/6]);return o;});
-  const n=pts.length,out=[];
-  for(let i=0;i<n;i++){const p0=pts[(i-1+n)%n],p1=pts[i],p2=pts[(i+1)%n],a=[(p0[0]+p1[0])/2,(p0[1]+p1[1])/2],b=[(p1[0]+p2[0])/2,(p1[1]+p2[1])/2];
-    for(let t=0;t<12;t++){const u=t/12,w0=(1-u)*(1-u),w1=2*(1-u)*u,w2=u*u;out.push([w0*a[0]+w1*p1[0]+w2*b[0],w0*a[1]+w1*p1[1]+w2*b[1]]);}}
-  return out;
-}
+function corners(pts,s){const n=pts.length,t=.5*(1-s);return pts.map((p,i)=>{const pr=pts[(i-1+n)%n],nx=pts[(i+1)%n];
+  return {p,a:[p[0]+(pr[0]-p[0])*t,p[1]+(pr[1]-p[1])*t],b:[p[0]+(nx[0]-p[0])*t,p[1]+(nx[1]-p[1])*t]};});}
+function outline(pts,s){const cs=corners(pts,s),out=[];
+  cs.forEach((c,i)=>{for(let k=0;k<10;k++){const u=k/10,w0=(1-u)*(1-u),w1=2*(1-u)*u,w2=u*u;out.push([w0*c.a[0]+w1*c.p[0]+w2*c.b[0],w0*c.a[1]+w1*c.p[1]+w2*c.b[1]]);}
+    const nxt=cs[(i+1)%cs.length].a;for(let k=0;k<4;k++)out.push([c.b[0]+(nxt[0]-c.b[0])*k/4,c.b[1]+(nxt[1]-c.b[1])*k/4]);});
+  return out;}
 const polyArea=o=>Math.abs(o.reduce((s,p,i)=>{const q=o[(i+1)%o.length];return s+p[0]*q[1]-q[0]*p[1];},0))/2;
-function makeShape(base,kind,rot){
-  const raw=base.map(([x,y])=>[x*Math.cos(rot)-y*Math.sin(rot),x*Math.sin(rot)+y*Math.cos(rot)]);
-  const unit=outline(raw,kind),k=Math.sqrt(Math.PI*SHAPE_R*SHAPE_R/polyArea(unit));   // scale to equal area
-  const pts=raw.map(([x,y])=>[x*k,y*k]),poly=unit.map(([x,y])=>[x*k,y*k]);
-  const maxR=Math.max(...poly.map(([x,y])=>Math.hypot(x,y))),meanR=poly.reduce((s,[x,y])=>s+Math.hypot(x,y),0)/poly.length;
-  return {kind,pts,poly,maxR,meanR};
+function makeShape(count,depth,sharp,R){
+  const base=makeBase(count,depth),unit=outline(base,sharp),k=Math.sqrt(Math.PI*R*R/polyArea(unit));
+  const pts=base.map(([x,y])=>[x*k,y*k]),poly=unit.map(([x,y])=>[x*k,y*k]);
+  return {count,depth,sharp,pts,poly,maxR:Math.max(...poly.map(([x,y])=>Math.hypot(x,y))),meanR:poly.reduce((s,[x,y])=>s+Math.hypot(x,y),0)/poly.length};
 }
-function tracePath(c,sh){
-  const p=sh.pts,n=p.length;c.beginPath();
-  if(sh.kind==='sharp'){c.moveTo(p[0][0],p[0][1]);for(let i=1;i<n;i++)c.lineTo(p[i][0],p[i][1]);c.closePath();return;}
-  const m=i=>[(p[i][0]+p[(i+1)%n][0])/2,(p[i][1]+p[(i+1)%n][1])/2];
-  const s=m(n-1);c.moveTo(s[0],s[1]);for(let i=0;i<n;i++){const e=m(i);c.quadraticCurveTo(p[i][0],p[i][1],e[0],e[1]);}c.closePath();
-}
-function drawShape(c,o,cols,flat){
-  c.save();c.translate(o.x,o.y);const sh=o.shape;
-  if(!flat){c.save();c.translate(5,7);c.fillStyle='rgba(110,85,50,.22)';tracePath(c,sh);c.fill();c.restore();}
-  c.fillStyle=flat||cols[0];c.strokeStyle=flat?'rgba(0,0,0,.25)':cols[1];c.lineWidth=2;c.lineJoin=sh.kind==='sharp'?'miter':'round';tracePath(c,sh);c.fill();c.stroke();
-  if(!flat){c.save();c.translate(-4,-5);c.scale(.55,.55);c.fillStyle=cols[2];c.globalAlpha=.55;tracePath(c,sh);c.fill();c.restore();}
+function tracePath(c,sh){const cs=corners(sh.pts,sh.sharp);c.beginPath();c.moveTo(cs[0].a[0],cs[0].a[1]);
+  cs.forEach((q,i)=>{c.quadraticCurveTo(q.p[0],q.p[1],q.b[0],q.b[1]);const nx=cs[(i+1)%cs.length].a;c.lineTo(nx[0],nx[1]);});c.closePath();}
+function drawShape(c,x,y,sh,cols,shadow){
+  c.save();c.translate(x,y);
+  if(shadow){c.save();c.translate(4,6);c.fillStyle='rgba(110,85,50,.22)';tracePath(c,sh);c.fill();c.restore();}
+  c.fillStyle=cols[0];c.strokeStyle=cols[1];c.lineWidth=2;c.lineJoin=sh.sharp>.5?'miter':'round';tracePath(c,sh);c.fill();c.stroke();
+  if(shadow){c.save();c.translate(-3,-4);c.scale(.55,.55);c.fillStyle=cols[2];c.globalAlpha=.5;tracePath(c,sh);c.fill();c.restore();}
   c.restore();
 }
 
-/* ---------- snacks ---------- */
-function drawFood(c,f,x,y,k){
-  c.save();c.translate(x,y);c.scale(k||1,k||1);
-  c.fillStyle='rgba(110,85,50,.22)';c.beginPath();c.ellipse(2,3,11,8,0,0,6.3);c.fill();
-  if(f==='cheese'){c.fillStyle='#f4c542';c.strokeStyle='#b8860b';c.lineWidth=1.2;c.beginPath();c.moveTo(-10,6);c.lineTo(10,-2);c.lineTo(10,8);c.lineTo(-10,10);c.closePath();c.fill();c.stroke();c.fillStyle='#d9a52a';c.beginPath();c.arc(3,5,1.8,0,6.3);c.fill();}
-  else if(f==='strawberry'){c.fillStyle='#e0504f';c.beginPath();c.moveTo(0,10);c.bezierCurveTo(-11,4,-9,-7,0,-5);c.bezierCurveTo(9,-7,11,4,0,10);c.fill();
-    c.fillStyle='#ffe9a8';for(const [a,b] of [[-3,0],[3,1],[0,4],[-1,-2],[3,-3]]){c.beginPath();c.arc(a,b,.9,0,6.3);c.fill();}c.fillStyle='#5f8552';c.beginPath();c.ellipse(0,-6,5,2.5,0,0,6.3);c.fill();}
-  else if(f==='blueberries'){for(const [a,b] of [[-5,2],[5,2],[0,-5],[0,5]]){c.fillStyle='#4a5f9e';c.beginPath();c.arc(a,b,5,0,6.3);c.fill();c.fillStyle='rgba(255,255,255,.3)';c.beginPath();c.arc(a-1.5,b-1.5,1.6,0,6.3);c.fill();}}
-  else if(f==='seeds'){for(const [a,b,r] of [[-5,0,.4],[4,-3,-.5],[2,5,1.2],[-2,-6,2]]){c.save();c.translate(a,b);c.rotate(r);c.fillStyle='#4b4038';c.beginPath();c.ellipse(0,0,4.5,2.6,0,0,6.3);c.fill();c.strokeStyle='#d8cdbb';c.lineWidth=.8;c.beginPath();c.moveTo(-3,0);c.lineTo(3,0);c.stroke();c.restore();}}
-  else if(f==='cracker'){c.fillStyle='#e2b56b';c.strokeStyle='#b88a3e';c.lineWidth=1.2;c.beginPath();c.arc(0,0,10,0,6.3);c.fill();c.stroke();c.fillStyle='#b88a3e';for(const [a,b] of [[-4,-3],[3,-4],[0,1],[-4,4],[4,4]]){c.beginPath();c.arc(a,b,1,0,6.3);c.fill();}}
-  else{c.fillStyle='#f2efe0';c.strokeStyle='#c94b43';c.lineWidth=2.4;c.beginPath();c.arc(0,0,9,Math.PI*.15,Math.PI*1.15);c.closePath();c.fill();c.stroke();c.fillStyle='#5a4030';c.beginPath();c.ellipse(-1,2,1.2,2,0,0,6.3);c.fill();}
-  c.restore();
-}
-
-/* ---------- gardens: 2 twin pairs, each pair = one sharp + one round from the same base ---------- */
-function makeGardens(){
-  const layouts=shuffle(Array.from({length:N_CAGES},(_,i)=>i%2?'adjacent':'diagonal'));
-  const list=[build(0,true,'practice')];
-  for(let i=0;i<N_CAGES;i++)list.push(build(i+1,false,layouts[i]));
+/* ---------- trial list: every feature balanced and shuffled independently for each side ---------- */
+function makeTrials(){
+  const n=N_TRIALS,f=()=>({sharp:balanced(SHARP_LEVELS,n),count:balanced(COUNTS,n),depth:balanced(DEPTHS,n),prize:balanced(PRIZE_SHAPES,n)});
+  const L=f(),R=f();
+  const valuePairs=shuffle(Array.from({length:63},(_,i)=>[[1,1],[2,2],[3,3],[1,2],[2,1],[1,3],[3,1],[2,3],[3,2]][i%9])).slice(0,n);
+  const list=[];
+  for(let i=0;i<N_PRACTICE;i++)list.push(trial(-1-i,true,{sharp:SHARP_LEVELS[i%4],count:9,depth:'shallow',prize:'round',value:1},{sharp:SHARP_LEVELS[(i+2)%4],count:9,depth:'shallow',prize:'round',value:1}));
+  for(let i=0;i<n;i++)list.push(trial(i+1,false,{sharp:L.sharp[i],count:L.count[i],depth:L.depth[i],prize:L.prize[i],value:valuePairs[i][0]},
+                                                 {sharp:R.sharp[i],count:R.count[i],depth:R.depth[i],prize:R.prize[i],value:valuePairs[i][1]}));
   return list;
 }
-function build(idx,practice,layout){
-  let kinds=layout==='adjacent'?['sharp','sharp','round','round']:['sharp','round','sharp','round'];
-  if(practice)kinds=shuffle(kinds.slice());
-  const rot=Math.floor(Math.random()*4);kinds=kinds.map((_,i)=>kinds[(i+rot)%4]);
-  const bases=[makeBase(),makeBase()],twinOf={sharp:shuffle([0,1]),round:shuffle([0,1])},used={sharp:0,round:0};
-  const [fa,fb]=shuffle(FOODS.slice()),swap=Math.random()<.5,foodFor={sharp:swap?[fb,fa]:[fa,fb],round:[fa,fb]};
-  const objs=kinds.map((k,i)=>{const n=used[k]++,twin=twinOf[k][n];return {slot:i,kind:k,twin,shape:makeShape(bases[twin],k,Math.random()*Math.PI*2),food:foodFor[k][n]};});
-  // a snack sits at the same distance from the centre of both twins (just outside the larger one)
-  const off=[0,1].map(t=>Math.max(...objs.filter(o=>o.twin===t).map(o=>o.shape.maxR))+16);
-  objs.forEach(o=>{const a=SLOT_ANG[o.slot];o.x=C+SLOT_D*Math.cos(a);o.y=C+SLOT_D*Math.sin(a);
-    const side=Math.atan2(C-o.y,C-o.x)+(Math.random()<.5?-1:1)*rand(.35,.6);
-    o.food={type:o.food,x:o.x+off[o.twin]*Math.cos(side),y:o.y+off[o.twin]*Math.sin(side),eaten:false,order:0,offset:off[o.twin]};});
-  return {idx,practice,layout,objs,cols:STONES[Math.floor(Math.random()*STONES.length)],bed:makeBed()};
+function trial(idx,practice,l,r){
+  const sides={left:{...l},right:{...r}};
+  for(const k of ['left','right']){const sd=sides[k];sd.shape=makeShape(sd.count,sd.depth,sd.sharp,OBST_R);sd.prizeShape=sd.prize==='sharp'?makeShape(5,'deep',1,PRIZE_R):makeShape(8,'none',0,PRIZE_R);}   // prizes: sharp = 5-point star, round = circle, equal area
+  // prizes sit at the same distance from both sculpture centres, toward the mouse's start, mirrored left/right
+  const off=Math.max(sides.left.shape.maxR,sides.right.shape.maxR)+20,ang=58*Math.PI/180;
+  sides.left.px=POS.left.x+off*Math.cos(ang);sides.left.py=POS.left.y+off*Math.sin(ang);
+  sides.right.px=POS.right.x-off*Math.cos(ang);sides.right.py=POS.right.y+off*Math.sin(ang);
+  return {idx,practice,sides,offset:off,cols:STONES[Math.floor(Math.random()*STONES.length)]};
 }
 
 /* ---------- state ---------- */
-let state='intro',gardens=[],gi=0,g=null,snacks=0,lastT=performance.now(),tStart=0,lastLog=0,startedAt='';
-let samples=[],rows=[],eaten=[],nibble=null,pointer=null,awareness={},saveResult='not saved';
-const mouse={x:C,y:C,h:0,v:0,step:0};
+let state='intro',trials=[],ti=0,T=null,points=0,lastT=performance.now(),tStart=0,lastLog=0,startedAt='';
+let samples=[],rows=[],nibble=null,pointer=null,firstMove=null,awareness={},saveResult='not saved',lastData=null,hiddenCount=0;
+const mouse={x:START.x,y:START.y,h:-Math.PI/2,v:0,step:0};
 function showPanel(html,btn,fn){panel.innerHTML=html+(btn?'<div class="row"><button id="go">'+btn+'</button></div>':'');ov.hidden=false;
   if(btn){const b=document.getElementById('go');b.onclick=()=>fn();setTimeout(()=>b.focus(),30);}}
 const hidePanel=()=>{ov.hidden=true;};
-let tt;function toast(m,ms){toastEl.textContent=m;toastEl.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>toastEl.classList.remove('show'),ms||1600);}
+let tt;function toast(m,ms){toastEl.textContent=m;toastEl.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>toastEl.classList.remove('show'),ms||1200);}
 function toLocal(e){const r=cv.getBoundingClientRect();return {x:(e.clientX-r.left)/r.width*S,y:(e.clientY-r.top)/r.height*S};}
 stage.addEventListener('pointermove',e=>{pointer=toLocal(e);});
 stage.addEventListener('pointerdown',e=>{pointer=toLocal(e);});
 stage.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse')pointer=null;});
-let hiddenCount=0;document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='forage')hiddenCount++;});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='choose')hiddenCount++;});
 
-function edgeDist(o,x,y){let b=1e9;for(const [px,py] of o.shape.poly){const d=Math.hypot(o.x+px-x,o.y+py-y);if(d<b)b=d;}return b;}
-function nearestObj(x,y){let best=null,bd=1e9;for(const o of g.objs){const d=Math.hypot(o.x-x,o.y-y);if(d<bd){bd=d;best=o;}}return {o:best,dist:bd,edge:edgeDist(best,x,y)};}
+function edgeDist(sd,pos,x,y){let b=1e9;for(const [px,py] of sd.shape.poly){const d=Math.hypot(pos.x+px-x,pos.y+py-y);if(d<b)b=d;}return b;}
 function step(f,now){
   let tx=mouse.x,ty=mouse.y;if(pointer){tx=pointer.x;ty=pointer.y;}
-  const dx=tx-mouse.x,dy=ty-mouse.y,d=Math.hypot(dx,dy),want=d>6?Math.min(SPEED,d*0.06):0;
-  mouse.v+=(want-mouse.v)*0.15*f;
-  if(d>6){let da=Math.atan2(dy,dx)-mouse.h;while(da>Math.PI)da-=2*Math.PI;while(da<-Math.PI)da+=2*Math.PI;mouse.h+=da*Math.min(1,0.18*f);}
+  const dx=tx-mouse.x,dy=ty-mouse.y,d=Math.hypot(dx,dy),want=d>6?Math.min(SPEED,d*0.07):0;
+  mouse.v+=(want-mouse.v)*0.16*f;
+  if(d>6){let da=Math.atan2(dy,dx)-mouse.h;while(da>Math.PI)da-=2*Math.PI;while(da<-Math.PI)da+=2*Math.PI;mouse.h+=da*Math.min(1,0.2*f);}
   let nx=mouse.x+Math.cos(mouse.h)*mouse.v*f,ny=mouse.y+Math.sin(mouse.h)*mouse.v*f;
   const rr=Math.hypot(nx-C,ny-C),lim=AR-MOUSE_R-4;if(rr>lim){nx=C+(nx-C)/rr*lim;ny=C+(ny-C)/rr*lim;}
-  for(const o of g.objs){const q=Math.hypot(nx-o.x,ny-o.y),m=o.shape.meanR+MOUSE_R;if(q<m){nx=o.x+(nx-o.x)/q*m;ny=o.y+(ny-o.y)/q*m;}}
+  for(const k of ['left','right']){const p=POS[k],m=T.sides[k].shape.meanR+MOUSE_R,q=Math.hypot(nx-p.x,ny-p.y);if(q<m){nx=p.x+(nx-p.x)/q*m;ny=p.y+(ny-p.y)/q*m;}}
   mouse.x=nx;mouse.y=ny;mouse.step+=mouse.v*f*0.35;
-  if(state==='forage'){
-    let hit=null;for(const o of g.objs)if(!o.food.eaten&&Math.hypot(o.food.x-mouse.x,o.food.y-mouse.y)<MOUSE_R+12)hit=o;
-    if(hit){if(!nibble||nibble.o!==hit)nibble={o:hit,t0:now};else if(now-nibble.t0>NIBBLE_MS){eat(hit,now);nibble=null;}}else nibble=null;
-  }
-  if(state==='forage'&&now-lastLog>=50){lastLog=now;const n=nearestObj(mouse.x,mouse.y);
-    samples.push({garden:g.idx,practice:g.practice?1:0,t_ms:Math.round(now-tStart),x:r3((mouse.x-C)/AR),y:r3((mouse.y-C)/AR),
-      speed:+mouse.v.toFixed(2),nearest_kind:n.o.kind,nearest_slot:n.o.slot,nearest_center_dist:r3(n.dist/AR),nearest_edge_dist:r3(n.edge/AR),eating:nibble?1:0,pointer:pointer?1:0});}
+  if(state!=='choose')return;
+  if(firstMove===null&&Math.hypot(mouse.x-START.x,mouse.y-START.y)>8)firstMove=Math.round(now-tStart);
+  let hit=null;for(const k of ['left','right']){const sd=T.sides[k];if(Math.hypot(sd.px-mouse.x,sd.py-mouse.y)<MOUSE_R+12)hit=k;}
+  if(hit){if(!nibble||nibble.k!==hit)nibble={k:hit,t0:now};else if(now-nibble.t0>NIBBLE_MS){choose(hit,now);nibble=null;return;}}else nibble=null;
+  if(now-lastLog>=50){lastLog=now;
+    samples.push({trial:T.idx,practice:T.practice?1:0,t_ms:Math.round(now-tStart),x:r3((mouse.x-C)/AR),y:r3((mouse.y-C)/AR),speed:+mouse.v.toFixed(2),
+      dist_center_L:r3(Math.hypot(POS.left.x-mouse.x,POS.left.y-mouse.y)/AR),dist_center_R:r3(Math.hypot(POS.right.x-mouse.x,POS.right.y-mouse.y)/AR),
+      dist_edge_L:r3(edgeDist(T.sides.left,POS.left,mouse.x,mouse.y)/AR),dist_edge_R:r3(edgeDist(T.sides.right,POS.right,mouse.x,mouse.y)/AR),pointer:pointer?1:0});}
+  if(now-tStart>TIMEOUT_MS)choose('none',now);
 }
-function eat(o,now){
-  o.food.eaten=true;o.food.order=eaten.length+1;eaten.push({kind:o.kind,slot:o.slot,twin:o.twin,food:o.food.type,t_ms:Math.round(now-tStart)});
-  if(!g.practice){snacks++;snacksEl.textContent=snacks;}
-  toast('Yum, '+FOOD_NAME[o.food.type]+'!',1100);
-  if(eaten.length===4)finishGarden(now);
-}
-function finishGarden(now){
-  state='done-garden';
-  const mine=samples.filter(s=>s.garden===g.idx&&!s.eating),dt=.05;
-  const dwell=k=>+(mine.filter(s=>s.nearest_kind===k&&s.nearest_center_dist*AR<NEAR).length*dt).toFixed(2);
-  const md=k=>{if(!mine.length)return null;let t=0;for(const s of mine){const x=C+s.x*AR,y=C+s.y*AR;let b=1e9;for(const o of g.objs)if(o.kind===k)b=Math.min(b,Math.hypot(o.x-x,o.y-y));t+=b/AR;}return r3(t/mine.length);};
-  const minD=k=>{let b=1e9;for(const s of mine){const x=C+s.x*AR,y=C+s.y*AR;for(const o of g.objs)if(o.kind===k)b=Math.min(b,edgeDist(o,x,y));}return r3(b/AR);};
-  rows.push({garden:g.idx,practice:g.practice?1:0,layout:g.layout,
-    first_kind:eaten[0].kind,first_food:eaten[0].food,first_latency_ms:eaten[0].t_ms,eat_order:eaten.map(e=>e.kind[0].toUpperCase()).join(''),
-    food_order:eaten.map(e=>e.food).join('|'),dwell_sharp_s:dwell('sharp'),dwell_round_s:dwell('round'),
-    mean_center_dist_sharp:md('sharp'),mean_center_dist_round:md('round'),min_edge_dist_sharp:minD('sharp'),min_edge_dist_round:minD('round'),
-    duration_s:+((now-tStart)/1000).toFixed(1)});
-  gi++;
+function choose(k,now){
+  state='between';
+  const mine=samples.filter(s=>s.trial===T.idx);
+  // path curvature: how far the path bowed toward the side NOT chosen (mouse-tracking style), in arena radii
+  let maxDev=null,meanDev=null;
+  if(k!=='none'&&mine.length){const tgt=T.sides[k],other=T.sides[k==='left'?'right':'left'],ax=tgt.px-START.x,ay=tgt.py-START.y,L=Math.hypot(ax,ay);
+    const sgn=Math.sign(ax*(other.py-START.y)-ay*(other.px-START.x))||1;
+    const devs=mine.map(s=>{const x=C+s.x*AR-START.x,y=C+s.y*AR-START.y;return sgn*(ax*y-ay*x)/L/AR;});
+    maxDev=r3(Math.max(...devs));meanDev=r3(devs.reduce((a,b)=>a+b,0)/devs.length);}
+  const sd=k==='none'?null:T.sides[k];
+  if(sd&&!T.practice){points+=sd.value;pointsEl.textContent=points;}
+  if(sd)toast('+'+sd.value+(sd.value===1?' point':' points'),700);
+  const row={trial:T.idx,practice:T.practice?1:0};
+  for(const [p,side] of [['L','left'],['R','right']]){const q=T.sides[side];
+    Object.assign(row,{[p+'_sharpness']:r3(q.sharp),[p+'_points']:q.count,[p+'_depth']:q.depth,[p+'_prize_shape']:q.prize,[p+'_value']:q.value,
+      [p+'_min_center_dist']:mine.length?Math.min(...mine.map(s=>s['dist_center_'+p])):null,[p+'_min_edge_dist']:mine.length?Math.min(...mine.map(s=>s['dist_edge_'+p])):null});}
+  Object.assign(row,{choice:k,chosen_sharpness:sd?r3(sd.sharp):null,chosen_value:sd?sd.value:null,chosen_prize_shape:sd?sd.prize:null,
+    rt_move_ms:firstMove,rt_choice_ms:Math.round(now-tStart),path_max_dev_toward_other:maxDev,path_mean_dev_toward_other:meanDev,prize_offset:r3(T.offset/AR)});
+  rows.push(row);
+  ti++;
   setTimeout(()=>{
-    if(g.practice)showPanel('<h2>Nice foraging!</h2><p>Now '+N_CAGES+' more gardens. Collect all four snacks in each one, in whatever order you like.</p>','Next garden',()=>{hidePanel();startGarden();});
-    else if(gi<gardens.length)startGarden();else askAwareness();
-  },1300);
+    if(T.practice&&ti===N_PRACTICE)showPanel('<h2>You\'ve got it!</h2><p>Now '+N_TRIALS+' gardens. Each time, pick whichever prize you like. The number on a prize is how many points it\'s worth.</p>','Start',()=>{hidePanel();startTrial();});
+    else if(!T.practice&&T.idx===BREAK_AFTER)showPanel('<h2>Halfway there</h2><p>Take a short break if you like. You have '+points+' points so far.</p>','Keep going',()=>{hidePanel();startTrial();});
+    else if(ti<trials.length)startTrial();else askAwareness();
+  },650);
 }
-function startGarden(){
-  g=gardens[gi];eaten=[];nibble=null;pointer=null;mouse.x=C;mouse.y=C;mouse.v=0;mouse.h=Math.random()*Math.PI*2;
-  cageChip.textContent=g.practice?'Practice garden':'Garden '+g.idx+' of '+N_CAGES;
-  tStart=lastLog=performance.now();state='forage';toast(g.practice?'Move your cursor and the mouse follows':'New garden! Find the snacks',1700);
+function startTrial(){
+  T=trials[ti];nibble=null;firstMove=null;mouse.x=START.x;mouse.y=START.y;mouse.v=0;mouse.h=-Math.PI/2;
+  trialChip.textContent=T.practice?'Practice '+(ti+1)+' of '+N_PRACTICE:'Garden '+T.idx+' of '+N_TRIALS;
+  tStart=lastLog=performance.now();state='choose';
 }
 
 /* ---------- start, awareness questions (before debrief), saving, debrief ---------- */
 function newRun(){
-  gardens=makeGardens();gi=0;snacks=0;snacksEl.textContent='0';samples=[];rows=[];awareness={};saveResult='not saved';hiddenCount=0;
-  g=gardens[0];mouse.x=C;mouse.y=C;document.getElementById('research').hidden=true;cageChip.textContent='Practice garden';
+  trials=makeTrials();ti=0;points=0;pointsEl.textContent='0';samples=[];rows=[];awareness={};saveResult='not saved';hiddenCount=0;lastData=null;
+  T=trials[0];mouse.x=START.x;mouse.y=START.y;document.getElementById('research').hidden=true;trialChip.textContent='Practice';
   const touchOnly=(()=>{try{return matchMedia('(pointer:coarse)').matches&&!matchMedia('(any-pointer:fine)').matches;}catch(e){return false;}})();
-  showPanel('<h2>Help a hungry garden mouse</h2><p>Our mouse lives in a little sandy garden full of stone sculptures. In each garden, four snacks are tucked in next to the sculptures.</p><p>Move your cursor and the mouse follows. Hold it on a snack for a moment to eat it. Collect all four to move on. About 4 minutes.</p>'+
+  showPanel('<h2>Help a garden mouse collect prizes</h2><p>In each garden there are two prizes, each next to a stone sculpture. Guide the mouse to the one you want: move your cursor and the mouse follows. Hold it on a prize for a moment to grab it.</p><p>Each prize shows how many points it\'s worth. You get one prize per garden, then a new garden appears. About 6 minutes.</p>'+
+    (BONUS_CENTS_PER_POINT?'<p>Every point earns you a '+BONUS_CENTS_PER_POINT+'¢ bonus.</p>':'')+
     (touchOnly?'<p class="small"><b>This study works best on a computer with a mouse or trackpad.</b></p>':'')+
-    '<p class="small">Consent placeholder: your IRB-approved consent text goes here, before anything starts.</p>','I agree, let\'s go',()=>{hidePanel();startedAt=new Date().toISOString();startGarden();});
+    '<p class="small">Consent placeholder: your IRB-approved consent text goes here, before anything starts.</p>','I agree, start practice',()=>{hidePanel();startedAt=new Date().toISOString();startTrial();});
   state='intro';
 }
 function askAwareness(){
-  state='questions';cageChip.textContent='Almost done';
+  state='questions';trialChip.textContent='Almost done';
   showPanel('<h2>Two quick questions</h2><p>There are no right or wrong answers.</p>'+
     '<label for="q1">What do you think this study was about?</label><textarea id="q1"></textarea>'+
-    '<label for="q2">Did you notice anything about the sculptures? If so, what?</label><textarea id="q2"></textarea>'+
-    '<label>Did you try to stay near or away from any kind of sculpture?</label><div class="opts">'+
-    ['Yes, near some','Yes, away from some','No','Not sure'].map((t,i)=>'<label><input type="radio" name="q3" value="'+t+'"> '+t+'</label>').join('')+'</div>'+
-    '<div class="err" id="qerr"></div>','Continue',()=>{
-      const q1=document.getElementById('q1').value.trim(),q2=document.getElementById('q2').value.trim(),q3=(document.querySelector('input[name=q3]:checked')||{}).value;
-      if(!q1||!q3){document.getElementById('qerr').textContent='Please answer the first and last question.';return;}
-      awareness={study_guess:q1,noticed_sculptures:q2,strategy:q3};saveAndDebrief();});
+    '<label for="q2">Did you notice anything about the sculptures or the prizes? If so, what?</label><textarea id="q2"></textarea>'+
+    '<label>Besides points, did anything else affect which prize you picked?</label><div class="opts">'+
+    ['Yes','No','Not sure'].map(t=>'<label><input type="radio" name="q3" value="'+t+'"> '+t+'</label>').join('')+'</div>'+
+    '<label for="q4">If yes, what?</label><textarea id="q4"></textarea><div class="err" id="qerr"></div>','Continue',()=>{
+      const q1=document.getElementById('q1').value.trim(),q3=(document.querySelector('input[name=q3]:checked')||{}).value;
+      if(!q1||!q3){document.getElementById('qerr').textContent='Please answer the first question and choose an option.';return;}
+      awareness={study_guess:q1,noticed:document.getElementById('q2').value.trim(),other_influence:q3,other_influence_what:document.getElementById('q4').value.trim()};saveAndDebrief();});
 }
 function buildData(){
   return {version:VERSION,prolific_pid:PID,study_id:STUDY_ID,session_id:SESSION_ID,started_at:startedAt,finished_at:new Date().toISOString(),
     screen:{w:screen.width,h:screen.height,stage_px:Math.round(stage.getBoundingClientRect().width),dpr:window.devicePixelRatio||1},
-    user_agent:navigator.userAgent,tab_switches:hiddenCount,awareness,
-    gardens:gardens.map(gd=>({garden:gd.idx,practice:gd.practice,layout:gd.layout,objects:gd.objs.map(o=>({slot:o.slot,kind:o.kind,twin:o.twin,
-      x:r3((o.x-C)/AR),y:r3((o.y-C)/AR),control_points:o.shape.pts.map(([a,b])=>[r3(a/AR),r3(b/AR)]),max_r:r3(o.shape.maxR/AR),
-      food:o.food.type,food_x:r3((o.food.x-C)/AR),food_y:r3((o.food.y-C)/AR),eaten_order:o.food.order}))})),
-    summary:rows,samples};
+    user_agent:navigator.userAgent,tab_switches:hiddenCount,points,bonus_cents:points*BONUS_CENTS_PER_POINT,awareness,
+    stimuli:trials.map(t=>({trial:t.idx,practice:t.practice,colour:t.cols[0],prize_offset:r3(t.offset/AR),
+      sides:Object.fromEntries(['left','right'].map(k=>{const q=t.sides[k],pos=POS[k];return [k,{x:r3((pos.x-C)/AR),y:r3((pos.y-C)/AR),sharpness:r3(q.sharp),points:q.count,depth:q.depth,
+        control_points:q.shape.pts.map(([a,b])=>[r3(a/AR),r3(b/AR)]),max_r:r3(q.shape.maxR/AR),prize_shape:q.prize,value:q.value,prize_x:r3((q.px-C)/AR),prize_y:r3((q.py-C)/AR)}];}))})),
+    trials:rows,samples};
 }
 async function saveData(data){
   if(!DATAPIPE_ID)return 'skipped (pilot mode, no DataPipe ID set)';
@@ -297,13 +276,12 @@ async function saveData(data){
   }
   return 'failed';
 }
-let lastData=null;
 async function saveAndDebrief(){
   state='saving';showPanel('<h2>Saving your responses…</h2><p class="small">Please keep this page open.</p>');
   lastData=buildData();saveResult=await saveData(lastData);
   if(saveResult==='failed'){showPanel('<h2>We couldn\'t save your responses</h2><p>Please check your internet connection and try again.</p>','Try again',saveAndDebrief);return;}
-  state='done';cageChip.textContent='All done';
-  showPanel('<h2>All done. The mouse ate '+snacks+' snacks!</h2><p><b>What this study was really about:</b> each garden had two sharp-cornered and two smooth, rounded sculptures. They came in matched pairs: the same shape drawn once with sharp points and once with curves. The same snacks were placed next to both kinds. We were interested in which snacks you went for first and how close the mouse got to each kind of sculpture.</p><p>We did not tell you beforehand because knowing could change how you play. If you have questions or want your data removed, contact the research team.</p>',
+  state='done';trialChip.textContent='All done';
+  showPanel('<h2>All done. You collected '+points+' points!</h2><p><b>What this study was really about:</b> the sculptures varied in how sharp or smooth they were, how many points they had, and how deep those points were. The prizes were also sharp or round. Everything was mixed independently, and both prizes were always the same distance from the mouse. We were interested in whether these shape features, beyond the points, influenced which prize you chose and the path the mouse took.</p><p>We did not tell you beforehand because knowing could change how you play. If you have questions or want your data removed, contact the research team.</p>',
     RESEARCHER?'See researcher view':'Finish',RESEARCHER?showResearch:finish);
 }
 function finish(){
@@ -321,34 +299,38 @@ function drawMouse(c){
     c.fillStyle='#2b2a28';c.beginPath();c.arc(MOUSE_R+6,s*3.6,1.6,0,6.3);c.fill();}
   c.fillStyle='#e58a9a';c.beginPath();c.arc(MOUSE_R+12,0,2.2,0,6.3);c.fill();c.restore();
 }
+function drawPrize(c,sd,now,i){
+  const k=1+Math.sin(now/380+i)*.05;c.save();c.translate(sd.px,sd.py);c.scale(k,k);
+  drawShape(c,0,0,sd.prizeShape,PRIZE_COL,true);
+  c.fillStyle='#fff';c.font='700 14px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText(sd.value,0,1);c.restore();
+}
 function render(now){
-  if(!g)return;ctx.drawImage(g.bed,0,0,S,S);
-  for(const o of g.objs)drawShape(ctx,o,g.cols);
-  for(const o of g.objs)if(!o.food.eaten){const bob=1+Math.sin(now/400+o.slot)*.04;drawFood(ctx,o.food.type,o.food.x,o.food.y,bob);}
-  if(nibble&&state==='forage'){const q=clamp((now-nibble.t0)/NIBBLE_MS,0,1);ctx.strokeStyle='#e9b949';ctx.lineWidth=3.5;ctx.lineCap='round';ctx.beginPath();ctx.arc(nibble.o.food.x,nibble.o.food.y,17,-Math.PI/2,-Math.PI/2+q*Math.PI*2);ctx.stroke();}
+  ctx.drawImage(bed,0,0,S,S);
+  if(T&&state!=='intro'){
+    for(const k of ['left','right'])drawShape(ctx,POS[k].x,POS[k].y,T.sides[k].shape,T.cols,true);
+    if(state==='choose')['left','right'].forEach((k,i)=>drawPrize(ctx,T.sides[k],now,i));
+    if(nibble&&state==='choose'){const sd=T.sides[nibble.k],q=clamp((now-nibble.t0)/NIBBLE_MS,0,1);ctx.strokeStyle='#e9b949';ctx.lineWidth=3.5;ctx.lineCap='round';ctx.beginPath();ctx.arc(sd.px,sd.py,PRIZE_R+9,-Math.PI/2,-Math.PI/2+q*Math.PI*2);ctx.stroke();}
+  }
   drawMouse(ctx);
-  if(pointer&&state==='forage'){ctx.strokeStyle='rgba(43,42,40,.35)';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(pointer.x,pointer.y,7,0,6.3);ctx.stroke();}
+  if(pointer&&state==='choose'){ctx.strokeStyle='rgba(43,42,40,.35)';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(pointer.x,pointer.y,7,0,6.3);ctx.stroke();}
 }
 
 /* ---------- researcher view (only with #researcher in the URL) ---------- */
 function showResearch(){
   hidePanel();const sec=document.getElementById('research');sec.hidden=false;
   document.getElementById('saveStatus').textContent='Data file: '+saveResult+'. Participants never see this view.';
-  const main=rows.filter(r=>!r.practice),cnt=k=>main.filter(r=>r.first_kind===k).length,sum=k=>main.reduce((p,r)=>p+r[k],0).toFixed(1);
-  const avg=k=>(main.reduce((p,r)=>p+(r[k]||0),0)/Math.max(1,main.length)).toFixed(3);
-  document.getElementById('stats').innerHTML=[[cnt('round')+' / '+main.length,'First snack was by a round shape'],[cnt('sharp')+' / '+main.length,'First snack was by a sharp shape'],
-    [sum('dwell_round_s')+' s / '+sum('dwell_sharp_s')+' s','Time near round / sharp'],[avg('mean_center_dist_round')+' / '+avg('mean_center_dist_sharp'),'Avg distance to round / sharp (arena radii)']]
+  const main=rows.filter(r=>!r.practice&&r.choice!=='none');
+  const obs=main.flatMap(r=>[['L','left'],['R','right']].map(([p,s])=>({chosen:r.choice===s,sharp:r[p+'_sharpness'],points:r[p+'_points'],depth:r[p+'_depth'],prize:r[p+'_prize_shape'],value:r[p+'_value']})));
+  const rate=f=>{const a=obs.filter(f);return a.length?[a.filter(o=>o.chosen).length/a.length,a.length]:[null,0];};
+  const eqVal=main.filter(r=>r.L_value===r.R_value&&r.L_sharpness!==r.R_sharpness),lessSharp=eqVal.filter(r=>(r.choice==='left')===(r.L_sharpness<r.R_sharpness)).length;
+  const avg=k=>{const a=main.map(r=>r[k]).filter(v=>v!=null);return a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length):'n/a';};
+  document.getElementById('stats').innerHTML=[[main.length+' / '+N_TRIALS,'Gardens with a choice'],[lessSharp+' / '+eqVal.length,'Picked the smoother side when points were equal'],[avg('rt_choice_ms')+' ms','Average time to choose']]
     .map(s=>'<div class="stat"><div class="n">'+s[0]+'</div><div class="l">'+s[1]+'</div></div>').join('');
-  const th=document.getElementById('thumbs');th.innerHTML='';
-  gardens.filter(gd=>!gd.practice).forEach(gd=>{const fig=document.createElement('figure'),c=document.createElement('canvas'),k=160/S;c.width=160*dpr;c.height=160*dpr;const x=c.getContext('2d');x.scale(dpr*k,dpr*k);
-    x.drawImage(gd.bed,0,0,S,S);
-    for(const o of gd.objs){drawShape(x,o,null,o.kind==='sharp'?'#e3a466':'#6fbf9f');x.fillStyle='#2b2a28';x.font='600 28px system-ui';x.textAlign='center';x.textBaseline='middle';x.fillText((o.food.order||'')+'ABCD'[o.twin],o.x,o.y);}
-    x.strokeStyle='rgba(43,42,40,.55)';x.lineWidth=3;x.beginPath();let first=true;
-    for(const s of samples){if(s.garden!==gd.idx)continue;const px=C+s.x*AR,py=C+s.y*AR;first?x.moveTo(px,py):x.lineTo(px,py);first=false;}x.stroke();
-    fig.appendChild(c);const cap=document.createElement('figcaption');cap.textContent='Garden '+gd.idx+' ('+gd.layout+')';fig.appendChild(cap);th.appendChild(fig);});
-  const cols=['garden','layout','first_kind','first_food','eat_order','first_latency_ms','dwell_sharp_s','dwell_round_s','min_edge_dist_sharp','min_edge_dist_round'];
-  document.getElementById('table').innerHTML='<tr>'+cols.map(c=>'<th>'+c.replace(/_/g,' ')+'</th>').join('')+'</tr>'+
-    rows.map(r=>'<tr>'+cols.map(c=>'<td>'+(r.practice&&c==='garden'?'practice':r[c])+'</td>').join('')+'</tr>').join('');
+  const groups=[['Sculpture sharpness',SHARP_LEVELS.map(v=>[Math.round(v*100)+'% sharp',o=>Math.abs(o.sharp-v)<.01])],
+    ['Point depth',DEPTHS.map(v=>[v,o=>o.depth===v])],['Number of points',COUNTS.map(v=>[v+' points',o=>o.points===v])],
+    ['Prize shape',PRIZE_SHAPES.map(v=>[v+' prize',o=>o.prize===v])],['Prize value',[1,2,3].map(v=>[v+(v===1?' point':' points'),o=>o.value===v])]];
+  document.getElementById('featureBars').innerHTML=groups.map(([title,levels])=>'<h3>'+title+'</h3><div class="bars">'+levels.map(([lab,f])=>{const [p,n]=rate(f);
+    return '<span>'+lab+'</span><div class="bar"><i style="width:'+(p==null?0:p*100)+'%"></i><b></b></div><span class="muted">'+(p==null?'n/a':Math.round(p*100)+'%')+' <small>('+n+')</small></span>';}).join('')+'</div>').join('');
   sec.scrollIntoView({behavior:'smooth'});
 }
 function toCSV(list){if(!list.length)return '';const k=Object.keys(list[0]);return [k.join(',')].concat(list.map(r=>k.map(c=>JSON.stringify(r[c]??'')).join(','))).join('\n');}
@@ -356,10 +338,10 @@ async function copy(txt,label){const msg=document.getElementById('copyMsg'),ta=d
   try{await navigator.clipboard.writeText(txt);msg.textContent=label+' copied.';ta.hidden=true;}
   catch(e){ta.hidden=false;ta.value=txt;ta.select();msg.textContent='Copying was blocked, so it is shown below. Select it and copy.';}}
 document.getElementById('copyJson').onclick=()=>copy(JSON.stringify(lastData||buildData(),null,1),'Full data file');
-document.getElementById('copyTrials').onclick=()=>copy(toCSV(rows),'Garden summary');
+document.getElementById('copyTrials').onclick=()=>copy(toCSV(rows),'Trials CSV');
 document.getElementById('restart').onclick=()=>{window.scrollTo({top:0,behavior:'smooth'});newRun();};
 
-function frame(now){const f=Math.min(3,(now-lastT)/16.67);lastT=now;if(state==='forage'||state==='done-garden')step(f,now);render(now);requestAnimationFrame(frame);}
+function frame(now){const f=Math.min(3,(now-lastT)/16.67);lastT=now;if(state==='choose'||state==='between')step(f,now);render(now);requestAnimationFrame(frame);}
 newRun();requestAnimationFrame(frame);
 })();
 </script>
