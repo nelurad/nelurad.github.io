@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Disallow: /studies/
 
 Sitemap: https://nelurad.github.io/sitemap.xml
