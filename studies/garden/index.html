@@ -41,7 +41,7 @@ button:focus-visible{outline:2px solid #2b2a28;outline-offset:2px}
 .stat{border:1px solid var(--line);border-radius:12px;padding:10px 12px}
 .stat .n{font-size:22px;font-weight:600}
 .stat .l{font-size:13px;color:var(--muted)}
-.bars{display:grid;grid-template-columns:120px 1fr 64px;gap:4px 10px;align-items:center;font-size:13px}
+.bars{display:grid;grid-template-columns:150px 1fr 64px;gap:4px 10px;align-items:center;font-size:13px}
 .bar{height:14px;background:#efe9df;border-radius:7px;overflow:hidden;position:relative}
 .bar i{position:absolute;inset:0 auto 0 0;background:#c9a24a;border-radius:7px}
 .bar b{position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:#6f6b64}
@@ -54,10 +54,10 @@ button:focus-visible{outline:2px solid #2b2a28;outline-offset:2px}
 <div class="wrap">
   <header>
     <h1>Garden mouse</h1>
-    <div class="chips"><div class="chip" id="trialChip">Practice</div><div class="chip">Points <span id="points">0</span></div></div>
+    <div class="chips"><div class="chip" id="trialChip">Practice</div><div class="chip">Snacks <span id="snacks">0</span></div></div>
   </header>
   <div class="stage" id="stage">
-    <canvas id="arena" aria-label="Top-down view of a garden with a mouse, two sculptures and two prizes"></canvas>
+    <canvas id="arena" aria-label="Top-down view of a garden with a mouse, sculptures and snacks"></canvas>
     <div class="toast" id="toast" role="status"></div>
     <div class="overlay" id="ov"><div class="panel" id="panel"></div></div>
   </div>
@@ -67,11 +67,10 @@ button:focus-visible{outline:2px solid #2b2a28;outline-offset:2px}
     <h2>Researcher view</h2>
     <p class="note" style="margin-top:0" id="saveStatus"></p>
     <div class="stats" id="stats"></div>
-    <p class="note">How often a side was chosen, by its features. 50% (the line) means the feature made no difference. One person's data is noisy; this is a check that everything is recorded.</p>
     <div id="featureBars"></div>
     <div class="row">
       <button class="secondary" id="copyJson">Copy full data file (JSON)</button>
-      <button class="secondary" id="copyTrials">Copy trials CSV</button>
+      <button class="secondary" id="copyTrials">Copy gardens CSV</button>
       <button class="secondary" id="restart">Run again</button>
     </div>
     <div class="msg" id="copyMsg"></div>
@@ -81,25 +80,27 @@ button:focus-visible{outline:2px solid #2b2a28;outline-offset:2px}
 
 <script>
 (() => {
-/* ============ STUDY SETTINGS: fill these in before collecting real data ============ */
-const DATAPIPE_ID='W3cZlqh5tGf4';            // DataPipe experiment ID (pipe.jspsych.org). Empty = nothing is saved (pilot mode).
-const COMPLETION_URL='';         // Prolific completion link, e.g. https://app.prolific.com/submissions/complete?cc=XXXXXXX
-const BONUS_CENTS_PER_POINT=0;   // 0 = points only. Set (e.g. 1) only once your IRB and budget allow a performance bonus.
-const N_TRIALS=60, N_PRACTICE=3, BREAK_AFTER=30;
-const VERSION='garden-choice-v2';
-/* ================================================================================== */
+/* ============ STUDY SETTINGS ============ */
+const DATAPIPE_ID='W3cZlqh5tGf4';  // DataPipe experiment ID. Empty = nothing is saved (pilot mode).
+const COMPLETION_URL='';           // Prolific completion link, e.g. https://app.prolific.com/submissions/complete?cc=XXXXXXX
+const PER_TYPE_PER_BLOCK=8;        // gardens of each type (sharp-round, sharp-open, round-open) in each block -> 48 gardens
+const N_PRACTICE=3, WANDER_MS=4500, HAWK_RATE=0.75;   // hawk passes in 75% of sharp-round gardens in the hawk block
+const VERSION='garden-forage-v3';
+/* ======================================== */
 
 const S=600,C=S/2,AR=262;
-const OBST_R=40, PRIZE_R=13, MOUSE_R=13, SPEED=2.2, NIBBLE_MS=260, TIMEOUT_MS=15000;
-const START={x:C,y:C+205}, POS={left:{x:C-122,y:C-55},right:{x:C+122,y:C-55}};
-const SHARP_LEVELS=[0,1/3,2/3,1], COUNTS=[6,9,12], DEPTHS=['shallow','deep'], PRIZE_SHAPES=['round','sharp'];
+const OBST_R=40, MOUSE_R=13, SPEED=2.2, NIBBLE_MS=260, TIMEOUT_MS=15000, NEAR=100, COVER_PAD=26;
+const START={x:C,y:C+205}, BASE={left:{x:C-122,y:C-55},right:{x:C+122,y:C-55}};
+const DIST_DIFFS=[-40,-20,0,0,20,40];          // px: how much closer the LEFT snack is than the right (0 twice so equal trials are common)
+const SHARP_LV=[0.75,1], ROUND_LV=[0,0.25], COUNTS=[6,9,12], DEPTHS=['shallow','deep'];
+const TYPES=['sharp-round','sharp-open','round-open'];
+const FOODS=['cheese','strawberry','blueberries','seeds','cracker','apple'];
 const STONES=[['#b9a99a','#8f7f70','#d9cdbf'],['#a3abb8','#7b8494','#c9d0da'],['#b7a6b9','#8c7b8f','#d6cad8'],['#a9b5a2','#7f8c79','#cbd5c5'],['#c2ad94','#97836b','#ddd0be']];
-const PRIZE_COL=['#7d6bb3','#5b4a94','#b3a6dd'];   // one plain colour for every prize, so value comes only from the number
 
 const cv=document.getElementById('arena'),ctx=cv.getContext('2d'),stage=document.getElementById('stage');
 const dpr=Math.min(2,window.devicePixelRatio||1);cv.width=S*dpr;cv.height=S*dpr;ctx.scale(dpr,dpr);
 const ov=document.getElementById('ov'),panel=document.getElementById('panel'),toastEl=document.getElementById('toast');
-const trialChip=document.getElementById('trialChip'),pointsEl=document.getElementById('points');
+const trialChip=document.getElementById('trialChip'),snacksEl=document.getElementById('snacks');
 const RESEARCHER=(()=>{try{return location.hash==='#researcher';}catch(e){return false;}})();
 const params=(()=>{try{return new URLSearchParams(location.search);}catch(e){return new URLSearchParams();}})();
 const PID=params.get('PROLIFIC_PID')||'test-'+Math.random().toString(36).slice(2,8);
@@ -108,6 +109,7 @@ if(!DATAPIPE_ID)document.getElementById('footNote').textContent='Pilot preview: 
 const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const rand=(a,b)=>a+Math.random()*(b-a);
+const pick=a=>a[Math.floor(Math.random()*a.length)];
 const r3=v=>Math.round(v*1000)/1000;
 const balanced=(levels,n)=>shuffle(Array.from({length:n},(_,i)=>levels[i%levels.length]));
 
@@ -119,10 +121,10 @@ const bed=(()=>{const c=document.createElement('canvas');c.width=S*dpr;c.height=
   b.lineWidth=1.5;b.strokeStyle='#d3c6ad';b.beginPath();b.arc(C,C,AR+14,0,Math.PI*2);b.stroke();b.beginPath();b.arc(C,C,AR,0,Math.PI*2);b.stroke();
   b.fillStyle='rgba(120,95,60,.18)';b.beginPath();b.ellipse(START.x,START.y+8,22,12,0,0,Math.PI*2);b.fill();return c;})();
 
-/* ---------- shapes: control points + a sharpness dial (0 = fully curved, 1 = fully angular), scaled to equal area ---------- */
+/* ---------- sculptures: control points + sharpness dial (0 curved .. 1 angular), equal area ---------- */
 function makeBase(count,depth){
-  const ph=Math.random()*Math.PI*2,inner=depth==='deep'?rand(.46,.52):depth==='none'?.97:rand(.7,.76),pts=[];
-  for(let i=0;i<2*count;i++){const a=ph+i*Math.PI/count+(depth==='none'?0:rand(-.05,.05)),r=depth==='none'?(i%2?inner:1):(i%2?inner*rand(.96,1.04):rand(.93,1.07));pts.push([r*Math.cos(a),r*Math.sin(a)]);}
+  const ph=Math.random()*Math.PI*2,inner=depth==='deep'?rand(.46,.52):rand(.7,.76),pts=[];
+  for(let i=0;i<2*count;i++){const a=ph+i*Math.PI/count+rand(-.05,.05),r=i%2?inner*rand(.96,1.04):rand(.93,1.07);pts.push([r*Math.cos(a),r*Math.sin(a)]);}
   return pts;
 }
 function corners(pts,s){const n=pts.length,t=.5*(1-s);return pts.map((p,i)=>{const pr=pts[(i-1+n)%n],nx=pts[(i+1)%n];
@@ -139,38 +141,66 @@ function makeShape(count,depth,sharp,R){
 }
 function tracePath(c,sh){const cs=corners(sh.pts,sh.sharp);c.beginPath();c.moveTo(cs[0].a[0],cs[0].a[1]);
   cs.forEach((q,i)=>{c.quadraticCurveTo(q.p[0],q.p[1],q.b[0],q.b[1]);const nx=cs[(i+1)%cs.length].a;c.lineTo(nx[0],nx[1]);});c.closePath();}
-function drawShape(c,x,y,sh,cols,shadow){
+function drawShape(c,x,y,sh,cols){
   c.save();c.translate(x,y);
-  if(shadow){c.save();c.translate(4,6);c.fillStyle='rgba(110,85,50,.22)';tracePath(c,sh);c.fill();c.restore();}
+  c.save();c.translate(4,6);c.fillStyle='rgba(110,85,50,.22)';tracePath(c,sh);c.fill();c.restore();
   c.fillStyle=cols[0];c.strokeStyle=cols[1];c.lineWidth=2;c.lineJoin=sh.sharp>.5?'miter':'round';tracePath(c,sh);c.fill();c.stroke();
-  if(shadow){c.save();c.translate(-3,-4);c.scale(.55,.55);c.fillStyle=cols[2];c.globalAlpha=.5;tracePath(c,sh);c.fill();c.restore();}
+  c.save();c.translate(-3,-4);c.scale(.55,.55);c.fillStyle=cols[2];c.globalAlpha=.5;tracePath(c,sh);c.fill();c.restore();
   c.restore();
 }
 
-/* ---------- trial list: every feature balanced and shuffled independently for each side ---------- */
-function makeTrials(){
-  const n=N_TRIALS,f=()=>({sharp:balanced(SHARP_LEVELS,n),count:balanced(COUNTS,n),depth:balanced(DEPTHS,n),prize:balanced(PRIZE_SHAPES,n)});
-  const L=f(),R=f();
-  const valuePairs=shuffle(Array.from({length:63},(_,i)=>[[1,1],[2,2],[3,3],[1,2],[2,1],[1,3],[3,1],[2,3],[3,2]][i%9])).slice(0,n);
+/* ---------- snacks ---------- */
+function drawFood(c,f,x,y,k){
+  c.save();c.translate(x,y);c.scale(k||1,k||1);
+  c.fillStyle='rgba(110,85,50,.22)';c.beginPath();c.ellipse(2,3,11,8,0,0,6.3);c.fill();
+  if(f==='cheese'){c.fillStyle='#f4c542';c.strokeStyle='#b8860b';c.lineWidth=1.2;c.beginPath();c.moveTo(-10,6);c.lineTo(10,-2);c.lineTo(10,8);c.lineTo(-10,10);c.closePath();c.fill();c.stroke();c.fillStyle='#d9a52a';c.beginPath();c.arc(3,5,1.8,0,6.3);c.fill();}
+  else if(f==='strawberry'){c.fillStyle='#e0504f';c.beginPath();c.moveTo(0,10);c.bezierCurveTo(-11,4,-9,-7,0,-5);c.bezierCurveTo(9,-7,11,4,0,10);c.fill();
+    c.fillStyle='#ffe9a8';for(const [a,b] of [[-3,0],[3,1],[0,4],[-1,-2],[3,-3]]){c.beginPath();c.arc(a,b,.9,0,6.3);c.fill();}c.fillStyle='#5f8552';c.beginPath();c.ellipse(0,-6,5,2.5,0,0,6.3);c.fill();}
+  else if(f==='blueberries'){for(const [a,b] of [[-5,2],[5,2],[0,-5],[0,5]]){c.fillStyle='#4a5f9e';c.beginPath();c.arc(a,b,5,0,6.3);c.fill();c.fillStyle='rgba(255,255,255,.3)';c.beginPath();c.arc(a-1.5,b-1.5,1.6,0,6.3);c.fill();}}
+  else if(f==='seeds'){for(const [a,b,r] of [[-5,0,.4],[4,-3,-.5],[2,5,1.2],[-2,-6,2]]){c.save();c.translate(a,b);c.rotate(r);c.fillStyle='#4b4038';c.beginPath();c.ellipse(0,0,4.5,2.6,0,0,6.3);c.fill();c.strokeStyle='#d8cdbb';c.lineWidth=.8;c.beginPath();c.moveTo(-3,0);c.lineTo(3,0);c.stroke();c.restore();}}
+  else if(f==='cracker'){c.fillStyle='#e2b56b';c.strokeStyle='#b88a3e';c.lineWidth=1.2;c.beginPath();c.arc(0,0,10,0,6.3);c.fill();c.stroke();c.fillStyle='#b88a3e';for(const [a,b] of [[-4,-3],[3,-4],[0,1],[-4,4],[4,4]]){c.beginPath();c.arc(a,b,1,0,6.3);c.fill();}}
+  else{c.fillStyle='#f2efe0';c.strokeStyle='#c94b43';c.lineWidth=2.4;c.beginPath();c.arc(0,0,9,Math.PI*.15,Math.PI*1.15);c.closePath();c.fill();c.stroke();c.fillStyle='#5a4030';c.beginPath();c.ellipse(-1,2,1.2,2,0,0,6.3);c.fill();}
+  c.restore();
+}
+
+/* ---------- gardens ----------
+   Types: sharp-round, sharp-open (avoidance of sharp vs nothing), round-open (approach to round vs nothing).
+   Snacks are identical within a garden; the only cost is distance (one snack can be up to 40 px closer).
+   Block 1 = calm, block 2 = hawk season (shadows pass during the wander phase; sculptures give cover). */
+function makeGardens(){
   const list=[];
-  for(let i=0;i<N_PRACTICE;i++)list.push(trial(-1-i,true,{sharp:SHARP_LEVELS[i%4],count:9,depth:'shallow',prize:'round',value:1},{sharp:SHARP_LEVELS[(i+2)%4],count:9,depth:'shallow',prize:'round',value:1}));
-  for(let i=0;i<n;i++)list.push(trial(i+1,false,{sharp:L.sharp[i],count:L.count[i],depth:L.depth[i],prize:L.prize[i],value:valuePairs[i][0]},
-                                                 {sharp:R.sharp[i],count:R.count[i],depth:R.depth[i],prize:R.prize[i],value:valuePairs[i][1]}));
+  for(let i=0;i<N_PRACTICE;i++)list.push(garden(-1-i,'practice','calm',pick(TYPES),Math.random()<.5,0,false));
+  let idx=1;
+  for(const block of ['calm','hawk']){
+    const plan=[];
+    for(const type of TYPES){const sideFlip=balanced([true,false],PER_TYPE_PER_BLOCK),dd=balanced(DIST_DIFFS,PER_TYPE_PER_BLOCK);
+      const hawks=balanced(Array.from({length:PER_TYPE_PER_BLOCK},(_,i)=>i<Math.round(PER_TYPE_PER_BLOCK*HAWK_RATE)),PER_TYPE_PER_BLOCK);
+      for(let i=0;i<PER_TYPE_PER_BLOCK;i++)plan.push([type,sideFlip[i],dd[i],block==='hawk'&&type==='sharp-round'&&hawks[i]]);}
+    shuffle(plan).forEach(([type,flip,dd,hawk])=>list.push(garden(idx++,block,block,type,flip,dd,hawk)));
+  }
   return list;
 }
-function trial(idx,practice,l,r){
-  const sides={left:{...l},right:{...r}};
-  for(const k of ['left','right']){const sd=sides[k];sd.shape=makeShape(sd.count,sd.depth,sd.sharp,OBST_R);sd.prizeShape=sd.prize==='sharp'?makeShape(5,'deep',1,PRIZE_R):makeShape(8,'none',0,PRIZE_R);}   // prizes: sharp = 5-point star, round = circle, equal area
-  // prizes sit at the same distance from both sculpture centres, toward the mouse's start, mirrored left/right
-  const off=Math.max(sides.left.shape.maxR,sides.right.shape.maxR)+20,ang=58*Math.PI/180;
-  sides.left.px=POS.left.x+off*Math.cos(ang);sides.left.py=POS.left.y+off*Math.sin(ang);
-  sides.right.px=POS.right.x-off*Math.cos(ang);sides.right.py=POS.right.y+off*Math.sin(ang);
-  return {idx,practice,sides,offset:off,cols:STONES[Math.floor(Math.random()*STONES.length)]};
+function sculpture(kind){
+  if(kind==='open')return {kind,sharp:null,count:null,depth:null,shape:null};
+  const sharp=pick(kind==='sharp'?SHARP_LV:ROUND_LV),count=pick(COUNTS),depth=pick(DEPTHS);
+  return {kind,sharp,count,depth,shape:makeShape(count,depth,sharp,OBST_R)};
+}
+function garden(idx,phase,block,type,flip,distDiff,hawk){
+  let [a,b]=type.split('-');if(flip)[a,b]=[b,a];
+  const sides={left:sculpture(a),right:sculpture(b)};
+  // shift the two sides so the LEFT snack is distDiff px closer to the start (approx.), then measure the real distances
+  sides.left.pos={x:BASE.left.x,y:BASE.left.y+distDiff/2};sides.right.pos={x:BASE.right.x,y:BASE.right.y-distDiff/2};
+  const maxR=Math.max(...['left','right'].map(k=>sides[k].shape?sides[k].shape.maxR:OBST_R)),off=maxR+20,ang=58*Math.PI/180;
+  sides.left.px=sides.left.pos.x+off*Math.cos(ang);sides.left.py=sides.left.pos.y+off*Math.sin(ang);
+  sides.right.px=sides.right.pos.x-off*Math.cos(ang);sides.right.py=sides.right.pos.y+off*Math.sin(ang);
+  for(const k of ['left','right'])sides[k].dist=Math.hypot(sides[k].px-START.x,sides[k].py-START.y);
+  return {idx,phase,block,type,practice:phase==='practice',sides,distDiff,hawk,food:pick(FOODS),offset:off,cols:pick(STONES)};
 }
 
 /* ---------- state ---------- */
-let state='intro',trials=[],ti=0,T=null,points=0,lastT=performance.now(),tStart=0,lastLog=0,startedAt='';
+let state='intro',gardens=[],gi=0,G=null,snacks=0,lastT=performance.now(),tStart=0,lastLog=0,startedAt='';
 let samples=[],rows=[],nibble=null,pointer=null,firstMove=null,awareness={},saveResult='not saved',lastData=null,hiddenCount=0;
+let wander=null,crumbs=[],hawkEv=null,row=null;
 const mouse={x:START.x,y:START.y,h:-Math.PI/2,v:0,step:0};
 function showPanel(html,btn,fn){panel.innerHTML=html+(btn?'<div class="row"><button id="go">'+btn+'</button></div>':'');ov.hidden=false;
   if(btn){const b=document.getElementById('go');b.onclick=()=>fn();setTimeout(()=>b.focus(),30);}}
@@ -180,90 +210,126 @@ function toLocal(e){const r=cv.getBoundingClientRect();return {x:(e.clientX-r.le
 stage.addEventListener('pointermove',e=>{pointer=toLocal(e);});
 stage.addEventListener('pointerdown',e=>{pointer=toLocal(e);});
 stage.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse')pointer=null;});
-document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='choose')hiddenCount++;});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&(state==='choose'||state==='wander'))hiddenCount++;});
 
-function edgeDist(sd,pos,x,y){let b=1e9;for(const [px,py] of sd.shape.poly){const d=Math.hypot(pos.x+px-x,pos.y+py-y);if(d<b)b=d;}return b;}
-function step(f,now){
+const centerDist=(sd,x,y)=>Math.hypot(sd.pos.x-x,sd.pos.y-y);
+function edgeDist(sd,x,y){if(!sd.shape)return centerDist(sd,x,y);let b=1e9;for(const [px,py] of sd.shape.poly){const d=Math.hypot(sd.pos.x+px-x,sd.pos.y+py-y);if(d<b)b=d;}return b;}
+function move(f){
   let tx=mouse.x,ty=mouse.y;if(pointer){tx=pointer.x;ty=pointer.y;}
   const dx=tx-mouse.x,dy=ty-mouse.y,d=Math.hypot(dx,dy),want=d>6?Math.min(SPEED,d*0.07):0;
   mouse.v+=(want-mouse.v)*0.16*f;
   if(d>6){let da=Math.atan2(dy,dx)-mouse.h;while(da>Math.PI)da-=2*Math.PI;while(da<-Math.PI)da+=2*Math.PI;mouse.h+=da*Math.min(1,0.2*f);}
   let nx=mouse.x+Math.cos(mouse.h)*mouse.v*f,ny=mouse.y+Math.sin(mouse.h)*mouse.v*f;
   const rr=Math.hypot(nx-C,ny-C),lim=AR-MOUSE_R-4;if(rr>lim){nx=C+(nx-C)/rr*lim;ny=C+(ny-C)/rr*lim;}
-  for(const k of ['left','right']){const p=POS[k],m=T.sides[k].shape.meanR+MOUSE_R,q=Math.hypot(nx-p.x,ny-p.y);if(q<m){nx=p.x+(nx-p.x)/q*m;ny=p.y+(ny-p.y)/q*m;}}
+  for(const k of ['left','right']){const sd=G.sides[k];if(!sd.shape)continue;const m=sd.shape.meanR+MOUSE_R,q=Math.hypot(nx-sd.pos.x,ny-sd.pos.y);if(q<m){nx=sd.pos.x+(nx-sd.pos.x)/q*m;ny=sd.pos.y+(ny-sd.pos.y)/q*m;}}
   mouse.x=nx;mouse.y=ny;mouse.step+=mouse.v*f*0.35;
-  if(state!=='choose')return;
-  if(firstMove===null&&Math.hypot(mouse.x-START.x,mouse.y-START.y)>8)firstMove=Math.round(now-tStart);
-  let hit=null;for(const k of ['left','right']){const sd=T.sides[k];if(Math.hypot(sd.px-mouse.x,sd.py-mouse.y)<MOUSE_R+12)hit=k;}
-  if(hit){if(!nibble||nibble.k!==hit)nibble={k:hit,t0:now};else if(now-nibble.t0>NIBBLE_MS){choose(hit,now);nibble=null;return;}}else nibble=null;
-  if(now-lastLog>=50){lastLog=now;
-    samples.push({trial:T.idx,practice:T.practice?1:0,t_ms:Math.round(now-tStart),x:r3((mouse.x-C)/AR),y:r3((mouse.y-C)/AR),speed:+mouse.v.toFixed(2),
-      dist_center_L:r3(Math.hypot(POS.left.x-mouse.x,POS.left.y-mouse.y)/AR),dist_center_R:r3(Math.hypot(POS.right.x-mouse.x,POS.right.y-mouse.y)/AR),
-      dist_edge_L:r3(edgeDist(T.sides.left,POS.left,mouse.x,mouse.y)/AR),dist_edge_R:r3(edgeDist(T.sides.right,POS.right,mouse.x,mouse.y)/AR),pointer:pointer?1:0});}
-  if(now-tStart>TIMEOUT_MS)choose('none',now);
 }
+function logSample(now,phase){
+  if(now-lastLog<50)return;lastLog=now;const L=G.sides.left,R=G.sides.right;
+  samples.push({garden:G.idx,phase,t_ms:Math.round(now-tStart),x:r3((mouse.x-C)/AR),y:r3((mouse.y-C)/AR),speed:+mouse.v.toFixed(2),
+    dist_center_L:r3(centerDist(L,mouse.x,mouse.y)/AR),dist_center_R:r3(centerDist(R,mouse.x,mouse.y)/AR),
+    dist_edge_L:r3(edgeDist(L,mouse.x,mouse.y)/AR),dist_edge_R:r3(edgeDist(R,mouse.x,mouse.y)/AR),hawk:hawkEv&&hawkEv.active?1:0,pointer:pointer?1:0});
+}
+function step(f,now){
+  move(f);
+  if(state==='choose'){
+    if(firstMove===null&&Math.hypot(mouse.x-START.x,mouse.y-START.y)>8)firstMove=Math.round(now-tStart);
+    let hit=null;for(const k of ['left','right']){const sd=G.sides[k];if(Math.hypot(sd.px-mouse.x,sd.py-mouse.y)<MOUSE_R+12)hit=k;}
+    if(hit){if(!nibble||nibble.k!==hit)nibble={k:hit,t0:now};else if(now-nibble.t0>NIBBLE_MS){choose(hit,now);nibble=null;return;}}else nibble=null;
+    logSample(now,'choose');
+    if(now-tStart>TIMEOUT_MS)choose('none',now);
+  } else if(state==='wander'){
+    for(const cr of crumbs)if(!cr.eaten&&Math.hypot(cr.x-mouse.x,cr.y-mouse.y)<MOUSE_R+8){cr.eaten=true;wander.crumbs++;}
+    if(hawkEv&&!hawkEv.done){
+      const t=now-hawkEv.t0;
+      if(!hawkEv.active&&t>=0){hawkEv.active=true;hawkEv.onset={x:mouse.x,y:mouse.y};toast('A hawk! Hide next to a sculpture!',1600);}
+      if(hawkEv.active&&hawkEv.coverAt==null){const c=coverOf(mouse.x,mouse.y);if(c){hawkEv.coverAt=Math.round(t);hawkEv.firstCover=c;}}
+      if(hawkEv.active&&t>=hawkEv.passMs){hawkEv.done=true;hawkEv.active=false;const c=coverOf(mouse.x,mouse.y);hawkEv.coverAtPass=c||'none';
+        if(c)toast('Safe!',900);else{toast('Eek! The mouse dropped a snack.',1300);if(!G.practice&&snacks>0){snacks--;snacksEl.textContent=snacks;}}
+        wander.until=Math.max(wander.until,now+700);}
+    }
+    logSample(now,'wander');
+    if(now>=wander.until)endWander(now);
+  }
+}
+function coverOf(x,y){for(const k of ['left','right']){const sd=G.sides[k];if(sd.shape&&centerDist(sd,x,y)<sd.shape.meanR+MOUSE_R+COVER_PAD)return sd.kind;}return null;}
+
 function choose(k,now){
-  state='between';
-  const mine=samples.filter(s=>s.trial===T.idx);
-  // path curvature: how far the path bowed toward the side NOT chosen (mouse-tracking style), in arena radii
-  let maxDev=null,meanDev=null;
-  if(k!=='none'&&mine.length){const tgt=T.sides[k],other=T.sides[k==='left'?'right':'left'],ax=tgt.px-START.x,ay=tgt.py-START.y,L=Math.hypot(ax,ay);
+  const mine=samples.filter(s=>s.garden===G.idx&&s.phase==='choose');
+  let maxDev=null;
+  if(k!=='none'&&mine.length){const tgt=G.sides[k],other=G.sides[k==='left'?'right':'left'],ax=tgt.px-START.x,ay=tgt.py-START.y,L=Math.hypot(ax,ay);
     const sgn=Math.sign(ax*(other.py-START.y)-ay*(other.px-START.x))||1;
-    const devs=mine.map(s=>{const x=C+s.x*AR-START.x,y=C+s.y*AR-START.y;return sgn*(ax*y-ay*x)/L/AR;});
-    maxDev=r3(Math.max(...devs));meanDev=r3(devs.reduce((a,b)=>a+b,0)/devs.length);}
-  const sd=k==='none'?null:T.sides[k];
-  if(sd&&!T.practice){points+=sd.value;pointsEl.textContent=points;}
-  if(sd)toast('+'+sd.value+(sd.value===1?' point':' points'),700);
-  const row={trial:T.idx,practice:T.practice?1:0};
-  for(const [p,side] of [['L','left'],['R','right']]){const q=T.sides[side];
-    Object.assign(row,{[p+'_sharpness']:r3(q.sharp),[p+'_points']:q.count,[p+'_depth']:q.depth,[p+'_prize_shape']:q.prize,[p+'_value']:q.value,
+    maxDev=r3(Math.max(...mine.map(s=>{const x=C+s.x*AR-START.x,y=C+s.y*AR-START.y;return sgn*(ax*y-ay*x)/L/AR;})));}
+  const sd=k==='none'?null:G.sides[k];
+  if(sd&&!G.practice){snacks++;snacksEl.textContent=snacks;}
+  if(sd)toast('Yum!',600);
+  row={garden:G.idx,phase:G.phase,block:G.block,type:G.type,food:G.food};
+  for(const [p,side] of [['L','left'],['R','right']]){const q=G.sides[side];
+    Object.assign(row,{[p+'_kind']:q.kind,[p+'_sharpness']:q.sharp==null?null:r3(q.sharp),[p+'_points']:q.count,[p+'_depth']:q.depth,[p+'_snack_dist']:r3(q.dist/AR),
       [p+'_min_center_dist']:mine.length?Math.min(...mine.map(s=>s['dist_center_'+p])):null,[p+'_min_edge_dist']:mine.length?Math.min(...mine.map(s=>s['dist_edge_'+p])):null});}
-  Object.assign(row,{choice:k,chosen_sharpness:sd?r3(sd.sharp):null,chosen_value:sd?sd.value:null,chosen_prize_shape:sd?sd.prize:null,
-    rt_move_ms:firstMove,rt_choice_ms:Math.round(now-tStart),path_max_dev_toward_other:maxDev,path_mean_dev_toward_other:meanDev,prize_offset:r3(T.offset/AR)});
-  rows.push(row);
-  ti++;
-  setTimeout(()=>{
-    if(T.practice&&ti===N_PRACTICE)showPanel('<h2>You\'ve got it!</h2><p>Now '+N_TRIALS+' gardens. Each time, pick whichever prize you like. The number on a prize is how many points it\'s worth.</p>','Start',()=>{hidePanel();startTrial();});
-    else if(!T.practice&&T.idx===BREAK_AFTER)showPanel('<h2>Halfway there</h2><p>Take a short break if you like. You have '+points+' points so far.</p>','Keep going',()=>{hidePanel();startTrial();});
-    else if(ti<trials.length)startTrial();else askAwareness();
-  },650);
+  Object.assign(row,{dist_diff_px_target:G.distDiff,dist_diff_L_minus_R:r3((G.sides.left.dist-G.sides.right.dist)/AR),choice:k,chosen_kind:sd?sd.kind:null,
+    chosen_closer:sd?(sd.dist<=G.sides[k==='left'?'right':'left'].dist):null,rt_move_ms:firstMove,rt_choice_ms:Math.round(now-tStart),path_max_dev_toward_other:maxDev});
+  startWander(now);
 }
-function startTrial(){
-  T=trials[ti];nibble=null;firstMove=null;mouse.x=START.x;mouse.y=START.y;mouse.v=0;mouse.h=-Math.PI/2;
-  trialChip.textContent=T.practice?'Practice '+(ti+1)+' of '+N_PRACTICE:'Garden '+T.idx+' of '+N_TRIALS;
+function startWander(now){
+  state='wander';wander={t0:now,until:now+WANDER_MS,crumbs:0};
+  crumbs=[];while(crumbs.length<3){const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random())*(AR-30),x=C+r*Math.cos(a),y=C+r*Math.sin(a);
+    if(['left','right'].every(k=>centerDist(G.sides[k],x,y)>OBST_R+30)&&Math.hypot(x-mouse.x,y-mouse.y)>60)crumbs.push({x,y,eaten:false});}
+  hawkEv=G.hawk?{t0:now+rand(900,1800),passMs:2400,active:false,done:false,coverAt:null,firstCover:null,dir:Math.random()<.5?1:-1}:null;
+}
+function endWander(now){
+  const w=samples.filter(s=>s.garden===G.idx&&s.phase==='wander'&&!s.hawk),dt=.05;
+  const dwell=kind=>+(w.filter(s=>['L','R'].some(p=>G.sides[p==='L'?'left':'right'].kind===kind&&s['dist_center_'+p]*AR<NEAR)).length*dt).toFixed(2);
+  Object.assign(row,{wander_dwell_sharp_s:dwell('sharp'),wander_dwell_round_s:dwell('round'),wander_dwell_open_s:dwell('open'),wander_crumbs:wander.crumbs,
+    hawk:G.hawk?1:0,hawk_first_cover:hawkEv?hawkEv.firstCover||'none':null,hawk_cover_latency_ms:hawkEv?hawkEv.coverAt:null,hawk_cover_at_pass:hawkEv?hawkEv.coverAtPass:null,
+    hawk_onset_dist_sharp:hawkEv&&hawkEv.onset?r3(Math.min(...['left','right'].filter(k=>G.sides[k].kind==='sharp').map(k=>centerDist(G.sides[k],hawkEv.onset.x,hawkEv.onset.y)))/AR):null,
+    hawk_onset_dist_round:hawkEv&&hawkEv.onset?r3(Math.min(...['left','right'].filter(k=>G.sides[k].kind==='round').map(k=>centerDist(G.sides[k],hawkEv.onset.x,hawkEv.onset.y)))/AR):null});
+  rows.push(row);row=null;hawkEv=null;crumbs=[];state='between';gi++;
+  const next=gardens[gi];
+  setTimeout(()=>{
+    if(G.practice&&next&&!next.practice)showPanel('<h2>You\'ve got it!</h2><p>Now the real gardens. Grab whichever snack you like, then let the mouse wander until the next garden appears.</p>','Start',()=>{hidePanel();startGarden();});
+    else if(next&&next.block==='hawk'&&G.block!=='hawk')showPanel('<h2>Hawk season!</h2><p>Hawks sometimes fly over the garden now. When you see a hawk\'s shadow, hide the mouse right next to a sculpture until it passes, or it will drop a snack.</p><p class="small">You have '+snacks+' snacks so far. Take a short break if you like.</p>','Keep going',()=>{hidePanel();startGarden();});
+    else if(next)startGarden();else askAwareness();
+  },350);
+}
+function startGarden(){
+  G=gardens[gi];nibble=null;firstMove=null;mouse.x=START.x;mouse.y=START.y;mouse.v=0;mouse.h=-Math.PI/2;
+  const main=gardens.filter(g=>!g.practice).length;
+  trialChip.textContent=G.practice?'Practice '+(gi+1)+' of '+N_PRACTICE:'Garden '+G.idx+' of '+main;
   tStart=lastLog=performance.now();state='choose';
 }
 
 /* ---------- start, awareness questions (before debrief), saving, debrief ---------- */
 function newRun(){
-  trials=makeTrials();ti=0;points=0;pointsEl.textContent='0';samples=[];rows=[];awareness={};saveResult='not saved';hiddenCount=0;lastData=null;
-  T=trials[0];mouse.x=START.x;mouse.y=START.y;document.getElementById('research').hidden=true;trialChip.textContent='Practice';
+  gardens=makeGardens();gi=0;snacks=0;snacksEl.textContent='0';samples=[];rows=[];awareness={};saveResult='not saved';hiddenCount=0;lastData=null;
+  G=gardens[0];mouse.x=START.x;mouse.y=START.y;document.getElementById('research').hidden=true;trialChip.textContent='Practice';
   const touchOnly=(()=>{try{return matchMedia('(pointer:coarse)').matches&&!matchMedia('(any-pointer:fine)').matches;}catch(e){return false;}})();
-  showPanel('<h2>Help a garden mouse collect prizes</h2><p>In each garden there are two prizes, each next to a stone sculpture. Guide the mouse to the one you want: move your cursor and the mouse follows. Hold it on a prize for a moment to grab it.</p><p>Each prize shows how many points it\'s worth. You get one prize per garden, then a new garden appears. About 6 minutes.</p>'+
-    (BONUS_CENTS_PER_POINT?'<p>Every point earns you a '+BONUS_CENTS_PER_POINT+'¢ bonus.</p>':'')+
+  showPanel('<h2>Help a garden mouse forage</h2><p>Each garden has two snacks. Guide the mouse to whichever one you like: move your cursor and the mouse follows, and hold it on a snack for a moment to eat it.</p><p>After each snack, the mouse wanders for a few seconds (there may be crumbs to find), then a new garden appears. About 8 minutes.</p>'+
     (touchOnly?'<p class="small"><b>This study works best on a computer with a mouse or trackpad.</b></p>':'')+
-    '<p class="small">Consent placeholder: your IRB-approved consent text goes here, before anything starts.</p>','I agree, start practice',()=>{hidePanel();startedAt=new Date().toISOString();startTrial();});
+    '<p class="small">Consent placeholder: your IRB-approved consent text goes here, before anything starts.</p>','I agree, start practice',()=>{hidePanel();startedAt=new Date().toISOString();startGarden();});
   state='intro';
 }
 function askAwareness(){
   state='questions';trialChip.textContent='Almost done';
-  showPanel('<h2>Two quick questions</h2><p>There are no right or wrong answers.</p>'+
+  showPanel('<h2>A few quick questions</h2><p>There are no right or wrong answers.</p>'+
     '<label for="q1">What do you think this study was about?</label><textarea id="q1"></textarea>'+
-    '<label for="q2">Did you notice anything about the sculptures or the prizes? If so, what?</label><textarea id="q2"></textarea>'+
-    '<label>Besides points, did anything else affect which prize you picked?</label><div class="opts">'+
+    '<label for="q2">Did you notice anything about the sculptures? If so, what?</label><textarea id="q2"></textarea>'+
+    '<label>Besides distance, did anything else affect which snack you picked?</label><div class="opts">'+
     ['Yes','No','Not sure'].map(t=>'<label><input type="radio" name="q3" value="'+t+'"> '+t+'</label>').join('')+'</div>'+
-    '<label for="q4">If yes, what?</label><textarea id="q4"></textarea><div class="err" id="qerr"></div>','Continue',()=>{
-      const q1=document.getElementById('q1').value.trim(),q3=(document.querySelector('input[name=q3]:checked')||{}).value;
-      if(!q1||!q3){document.getElementById('qerr').textContent='Please answer the first question and choose an option.';return;}
-      awareness={study_guess:q1,noticed:document.getElementById('q2').value.trim(),other_influence:q3,other_influence_what:document.getElementById('q4').value.trim()};saveAndDebrief();});
+    '<label for="q4">If yes, what?</label><textarea id="q4"></textarea>'+
+    '<label>When a hawk came, did you prefer hiding next to a certain kind of sculpture?</label><div class="opts">'+
+    ['Spiky ones','Smooth ones','No preference','Didn\'t notice'].map(t=>'<label><input type="radio" name="q5" value="'+t+'"> '+t+'</label>').join('')+'</div><div class="err" id="qerr"></div>','Continue',()=>{
+      const q1=document.getElementById('q1').value.trim(),q3=(document.querySelector('input[name=q3]:checked')||{}).value,q5=(document.querySelector('input[name=q5]:checked')||{}).value;
+      if(!q1||!q3||!q5){document.getElementById('qerr').textContent='Please answer the first question and choose an option for each choice question.';return;}
+      awareness={study_guess:q1,noticed:document.getElementById('q2').value.trim(),other_influence:q3,other_influence_what:document.getElementById('q4').value.trim(),hawk_cover_pref:q5};saveAndDebrief();});
 }
 function buildData(){
   return {version:VERSION,prolific_pid:PID,study_id:STUDY_ID,session_id:SESSION_ID,started_at:startedAt,finished_at:new Date().toISOString(),
     screen:{w:screen.width,h:screen.height,stage_px:Math.round(stage.getBoundingClientRect().width),dpr:window.devicePixelRatio||1},
-    user_agent:navigator.userAgent,tab_switches:hiddenCount,points,bonus_cents:points*BONUS_CENTS_PER_POINT,awareness,
-    stimuli:trials.map(t=>({trial:t.idx,practice:t.practice,colour:t.cols[0],prize_offset:r3(t.offset/AR),
-      sides:Object.fromEntries(['left','right'].map(k=>{const q=t.sides[k],pos=POS[k];return [k,{x:r3((pos.x-C)/AR),y:r3((pos.y-C)/AR),sharpness:r3(q.sharp),points:q.count,depth:q.depth,
-        control_points:q.shape.pts.map(([a,b])=>[r3(a/AR),r3(b/AR)]),max_r:r3(q.shape.maxR/AR),prize_shape:q.prize,value:q.value,prize_x:r3((q.px-C)/AR),prize_y:r3((q.py-C)/AR)}];}))})),
+    user_agent:navigator.userAgent,tab_switches:hiddenCount,snacks,awareness,
+    stimuli:gardens.map(g=>({garden:g.idx,phase:g.phase,type:g.type,hawk:g.hawk,food:g.food,colour:g.cols[0],
+      sides:Object.fromEntries(['left','right'].map(k=>{const q=g.sides[k];return [k,{kind:q.kind,x:r3((q.pos.x-C)/AR),y:r3((q.pos.y-C)/AR),sharpness:q.sharp,points:q.count,depth:q.depth,
+        control_points:q.shape?q.shape.pts.map(([a,b])=>[r3(a/AR),r3(b/AR)]):null,max_r:q.shape?r3(q.shape.maxR/AR):null,snack_x:r3((q.px-C)/AR),snack_y:r3((q.py-C)/AR),snack_dist:r3(q.dist/AR)}];}))})),
     trials:rows,samples};
 }
 async function saveData(data){
@@ -281,12 +347,12 @@ async function saveAndDebrief(){
   lastData=buildData();saveResult=await saveData(lastData);
   if(saveResult==='failed'){showPanel('<h2>We couldn\'t save your responses</h2><p>Please check your internet connection and try again.</p>','Try again',saveAndDebrief);return;}
   state='done';trialChip.textContent='All done';
-  showPanel('<h2>All done. You collected '+points+' points!</h2><p><b>What this study was really about:</b> the sculptures varied in how sharp or smooth they were, how many points they had, and how deep those points were. The prizes were also sharp or round. Everything was mixed independently, and both prizes were always the same distance from the mouse. We were interested in whether these shape features, beyond the points, influenced which prize you chose and the path the mouse took.</p><p>We did not tell you beforehand because knowing could change how you play. If you have questions or want your data removed, contact the research team.</p>',
+  showPanel('<h2>All done. The mouse ate '+snacks+' snacks!</h2><p><b>What this study was really about:</b> the sculptures were either spiky or smooth, and sometimes a snack sat in open sand with no sculpture. Snacks were the same on both sides, and one was sometimes a little closer. We were interested in whether people walk farther to avoid spiky sculptures or to reach smooth ones, where the mouse wandered, and which sculptures people hid behind when a hawk came.</p><p>We did not tell you beforehand because knowing could change how you play. If you have questions or want your data removed, contact the research team.</p>',
     RESEARCHER?'See researcher view':'Finish',RESEARCHER?showResearch:finish);
 }
 function finish(){
   if(COMPLETION_URL){location.href=COMPLETION_URL;return;}
-  showPanel('<h2>Thank you!</h2><p>You have finished the study. You can close this tab.</p>'+(DATAPIPE_ID?'':'<p class="small">Pilot preview: in the real study, participants are sent back to Prolific here.</p>'));
+  showPanel('<h2>Thank you!</h2><p>You have finished the study. You can close this tab.</p>');
 }
 
 /* ---------- drawing ---------- */
@@ -299,38 +365,46 @@ function drawMouse(c){
     c.fillStyle='#2b2a28';c.beginPath();c.arc(MOUSE_R+6,s*3.6,1.6,0,6.3);c.fill();}
   c.fillStyle='#e58a9a';c.beginPath();c.arc(MOUSE_R+12,0,2.2,0,6.3);c.fill();c.restore();
 }
-function drawPrize(c,sd,now,i){
-  const k=1+Math.sin(now/380+i)*.05;c.save();c.translate(sd.px,sd.py);c.scale(k,k);
-  drawShape(c,0,0,sd.prizeShape,PRIZE_COL,true);
-  c.fillStyle='#fff';c.font='700 14px system-ui,sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText(sd.value,0,1);c.restore();
+function drawHawk(c,now){
+  if(!hawkEv||!hawkEv.active)return;
+  const t=(now-hawkEv.t0)/hawkEv.passMs,x=hawkEv.dir>0?-80+t*(S+160):S+80-t*(S+160),y=C-40+Math.sin(t*Math.PI)*60;
+  c.save();c.translate(x,y);c.scale(hawkEv.dir,1);c.fillStyle='rgba(40,35,30,.28)';
+  c.beginPath();c.moveTo(40,0);c.quadraticCurveTo(10,-6,0,-50);c.quadraticCurveTo(-8,-14,-30,-4);c.lineTo(-44,0);c.lineTo(-30,4);c.quadraticCurveTo(-8,14,0,50);c.quadraticCurveTo(10,6,40,0);c.fill();c.restore();
+  for(const k of ['left','right']){const sd=G.sides[k];if(!sd.shape)continue;c.strokeStyle='rgba(255,255,255,.55)';c.setLineDash([5,6]);c.lineWidth=2;
+    c.beginPath();c.arc(sd.pos.x,sd.pos.y,sd.shape.meanR+MOUSE_R+COVER_PAD,0,6.3);c.stroke();c.setLineDash([]);}
 }
 function render(now){
   ctx.drawImage(bed,0,0,S,S);
-  if(T&&state!=='intro'){
-    for(const k of ['left','right'])drawShape(ctx,POS[k].x,POS[k].y,T.sides[k].shape,T.cols,true);
-    if(state==='choose')['left','right'].forEach((k,i)=>drawPrize(ctx,T.sides[k],now,i));
-    if(nibble&&state==='choose'){const sd=T.sides[nibble.k],q=clamp((now-nibble.t0)/NIBBLE_MS,0,1);ctx.strokeStyle='#e9b949';ctx.lineWidth=3.5;ctx.lineCap='round';ctx.beginPath();ctx.arc(sd.px,sd.py,PRIZE_R+9,-Math.PI/2,-Math.PI/2+q*Math.PI*2);ctx.stroke();}
+  if(G&&state!=='intro'){
+    for(const k of ['left','right']){const sd=G.sides[k];if(sd.shape)drawShape(ctx,sd.pos.x,sd.pos.y,sd.shape,G.cols);}
+    if(state==='choose')['left','right'].forEach((k,i)=>{const sd=G.sides[k];drawFood(ctx,G.food,sd.px,sd.py,1+Math.sin(now/380+i)*.05);});
+    if(state==='wander')for(const cr of crumbs)if(!cr.eaten){ctx.fillStyle='#d9b26a';ctx.beginPath();ctx.arc(cr.x,cr.y,3.2,0,6.3);ctx.arc(cr.x+4,cr.y+2,2.4,0,6.3);ctx.fill();}
+    if(nibble&&state==='choose'){const sd=G.sides[nibble.k],q=clamp((now-nibble.t0)/NIBBLE_MS,0,1);ctx.strokeStyle='#e9b949';ctx.lineWidth=3.5;ctx.lineCap='round';ctx.beginPath();ctx.arc(sd.px,sd.py,22,-Math.PI/2,-Math.PI/2+q*Math.PI*2);ctx.stroke();}
   }
   drawMouse(ctx);
-  if(pointer&&state==='choose'){ctx.strokeStyle='rgba(43,42,40,.35)';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(pointer.x,pointer.y,7,0,6.3);ctx.stroke();}
+  if(state==='wander')drawHawk(ctx,now);
+  if(pointer&&(state==='choose'||state==='wander')){ctx.strokeStyle='rgba(43,42,40,.35)';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(pointer.x,pointer.y,7,0,6.3);ctx.stroke();}
 }
 
 /* ---------- researcher view (only with #researcher in the URL) ---------- */
 function showResearch(){
   hidePanel();const sec=document.getElementById('research');sec.hidden=false;
-  document.getElementById('saveStatus').textContent='Data file: '+saveResult+'. Participants never see this view.';
-  const main=rows.filter(r=>!r.practice&&r.choice!=='none');
-  const obs=main.flatMap(r=>[['L','left'],['R','right']].map(([p,s])=>({chosen:r.choice===s,sharp:r[p+'_sharpness'],points:r[p+'_points'],depth:r[p+'_depth'],prize:r[p+'_prize_shape'],value:r[p+'_value']})));
-  const rate=f=>{const a=obs.filter(f);return a.length?[a.filter(o=>o.chosen).length/a.length,a.length]:[null,0];};
-  const eqVal=main.filter(r=>r.L_value===r.R_value&&r.L_sharpness!==r.R_sharpness),lessSharp=eqVal.filter(r=>(r.choice==='left')===(r.L_sharpness<r.R_sharpness)).length;
-  const avg=k=>{const a=main.map(r=>r[k]).filter(v=>v!=null);return a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length):'n/a';};
-  document.getElementById('stats').innerHTML=[[main.length+' / '+N_TRIALS,'Gardens with a choice'],[lessSharp+' / '+eqVal.length,'Picked the smoother side when points were equal'],[avg('rt_choice_ms')+' ms','Average time to choose']]
+  document.getElementById('saveStatus').textContent='Data file: '+saveResult+'. Participants never see this view. One person\'s data is noisy; this is a check that everything is recorded.';
+  const main=rows.filter(r=>r.phase!=='practice'&&r.choice!=='none');
+  const rate=(type,kind,f)=>{const a=main.filter(r=>r.type===type&&(!f||f(r)));return a.length?[a.filter(r=>r.chosen_kind===kind).length/a.length,a.length]:[null,0];};
+  const eq=r=>r.dist_diff_px_target===0;
+  const hawkRows=rows.filter(r=>r.hawk===1),cov=k=>hawkRows.filter(r=>r.hawk_first_cover===k).length;
+  const sum=k=>main.reduce((p,r)=>p+(r[k]||0),0).toFixed(1);
+  document.getElementById('stats').innerHTML=[[main.length,'Gardens with a choice'],[cov('round')+' / '+cov('sharp')+' / '+cov('none'),'Hawk cover: round / spiky / none'],
+    [sum('wander_dwell_round_s')+' / '+sum('wander_dwell_sharp_s')+' / '+sum('wander_dwell_open_s')+' s','Wandering near round / spiky / open spot']]
     .map(s=>'<div class="stat"><div class="n">'+s[0]+'</div><div class="l">'+s[1]+'</div></div>').join('');
-  const groups=[['Sculpture sharpness',SHARP_LEVELS.map(v=>[Math.round(v*100)+'% sharp',o=>Math.abs(o.sharp-v)<.01])],
-    ['Point depth',DEPTHS.map(v=>[v,o=>o.depth===v])],['Number of points',COUNTS.map(v=>[v+' points',o=>o.points===v])],
-    ['Prize shape',PRIZE_SHAPES.map(v=>[v+' prize',o=>o.prize===v])],['Prize value',[1,2,3].map(v=>[v+(v===1?' point':' points'),o=>o.value===v])]];
-  document.getElementById('featureBars').innerHTML=groups.map(([title,levels])=>'<h3>'+title+'</h3><div class="bars">'+levels.map(([lab,f])=>{const [p,n]=rate(f);
-    return '<span>'+lab+'</span><div class="bar"><i style="width:'+(p==null?0:p*100)+'%"></i><b></b></div><span class="muted">'+(p==null?'n/a':Math.round(p*100)+'%')+' <small>('+n+')</small></span>';}).join('')+'</div>').join('');
+  const bar=(lab,[p,n])=>'<span>'+lab+'</span><div class="bar"><i style="width:'+(p==null?0:p*100)+'%"></i><b></b></div><span class="muted">'+(p==null?'n/a':Math.round(p*100)+'%')+' <small>('+n+')</small></span>';
+  const blocks=[['Choice when snacks were equally far',[['Round over spiky',rate('sharp-round','round',eq)],['Open sand over spiky (avoidance)',rate('sharp-open','open',eq)],['Round over open sand (approach)',rate('round-open','round',eq)]]],
+    ['Choice across all distances',[['Round over spiky',rate('sharp-round','round')],['Open sand over spiky',rate('sharp-open','open')],['Round over open sand',rate('round-open','round')]]],
+    ['Took the farther snack',[['To avoid spiky (vs round)',(()=>{const a=main.filter(r=>r.type==='sharp-round'&&r.dist_diff_px_target!==0&&r.chosen_closer===false);return [a.length?a.filter(r=>r.chosen_kind==='round').length/a.length:null,a.length];})()],
+      ['Calm block: round over spiky',rate('sharp-round','round',r=>r.block==='calm')],['Hawk block: round over spiky',rate('sharp-round','round',r=>r.block==='hawk')]]]];
+  document.getElementById('featureBars').innerHTML=blocks.map(([t,items])=>'<h3>'+t+'</h3><div class="bars">'+items.map(([l,v])=>bar(l,v)).join('')+'</div>').join('')+
+    '<p class="note">50% (the line) = no preference. "Took the farther snack" shows, of the times someone walked farther, how often the farther snack was by the round sculpture.</p>';
   sec.scrollIntoView({behavior:'smooth'});
 }
 function toCSV(list){if(!list.length)return '';const k=Object.keys(list[0]);return [k.join(',')].concat(list.map(r=>k.map(c=>JSON.stringify(r[c]??'')).join(','))).join('\n');}
@@ -338,10 +412,10 @@ async function copy(txt,label){const msg=document.getElementById('copyMsg'),ta=d
   try{await navigator.clipboard.writeText(txt);msg.textContent=label+' copied.';ta.hidden=true;}
   catch(e){ta.hidden=false;ta.value=txt;ta.select();msg.textContent='Copying was blocked, so it is shown below. Select it and copy.';}}
 document.getElementById('copyJson').onclick=()=>copy(JSON.stringify(lastData||buildData(),null,1),'Full data file');
-document.getElementById('copyTrials').onclick=()=>copy(toCSV(rows),'Trials CSV');
+document.getElementById('copyTrials').onclick=()=>copy(toCSV(rows),'Gardens CSV');
 document.getElementById('restart').onclick=()=>{window.scrollTo({top:0,behavior:'smooth'});newRun();};
 
-function frame(now){const f=Math.min(3,(now-lastT)/16.67);lastT=now;if(state==='choose'||state==='between')step(f,now);render(now);requestAnimationFrame(frame);}
+function frame(now){const f=Math.min(3,(now-lastT)/16.67);lastT=now;if(state==='choose'||state==='wander'||state==='between')step(f,now);render(now);requestAnimationFrame(frame);}
 newRun();requestAnimationFrame(frame);
 })();
 </script>
