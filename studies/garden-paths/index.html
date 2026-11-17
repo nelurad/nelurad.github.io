@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Garden mouse</title>
+<style>
+:root{--bg:#f6f3ee;--ink:#2b2a28;--muted:#6f6b64;--accent:#e9b949;--card:#fff;--line:#e2ddd3}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-rounded,"SF Pro Rounded",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5}
+.wrap{max-width:720px;margin:0 auto;padding:18px 16px 48px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+h1{font-size:20px;font-weight:600;margin:0}
+h2{font-size:17px;font-weight:600;margin:0 0 8px}
+h3{font-size:15px;font-weight:600;margin:18px 0 6px}
+.chips{display:flex;gap:8px}
+.chip{background:#fff;border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px;font-variant-numeric:tabular-nums}
+.stage{position:relative;border-radius:20px;overflow:hidden;background:#e9e1d2;border:1px solid var(--line);aspect-ratio:1/1;touch-action:none;cursor:none}
+canvas#arena{position:absolute;inset:0;width:100%;height:100%;display:block}
+.toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:rgba(43,42,40,.86);color:#fff;padding:7px 14px;border-radius:999px;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(246,243,238,.95);padding:16px;cursor:default}
+.overlay[hidden]{display:none}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 24px;max-width:500px;max-height:100%;overflow:auto}
+.panel p{margin:0 0 10px;font-size:15px}
+.panel .small{font-size:13px;color:var(--muted)}
+.panel label{display:block;font-size:14px;margin:12px 0 4px}
+.panel textarea{width:100%;height:64px;font:inherit;font-size:14px;border:1px solid var(--line);border-radius:10px;padding:8px}
+.panel .opts{display:flex;gap:14px;flex-wrap:wrap;font-size:14px}
+.panel .opts label{display:flex;gap:6px;align-items:center;margin:0}
+.err{color:#a33;font-size:13px;min-height:1.2em;margin-top:6px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+button{font:inherit;font-size:15px;padding:9px 18px;border-radius:999px;border:1px solid #d4a43a;background:var(--accent);color:#2a1d00;cursor:pointer}
+button.secondary{background:#fff;border-color:var(--line);color:var(--ink)}
+button:focus-visible{outline:2px solid #2b2a28;outline-offset:2px}
+.note{font-size:13px;color:var(--muted);margin:10px 0 0}
+#research{margin-top:28px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}
+#research[hidden]{display:none}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0 6px}
+.stat{border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.stat .n{font-size:22px;font-weight:600}
+.stat .l{font-size:13px;color:var(--muted)}
+table{border-collapse:collapse;width:100%;font-size:13px;margin-top:8px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-weight:500}
+.paths canvas{width:100%;max-width:420px;height:auto;display:block;border-radius:12px;border:1px solid var(--line)}
+#csvOut{width:100%;height:120px;font-family:ui-monospace,Menlo,monospace;font-size:12px;margin-top:10px;border:1px solid var(--line);border-radius:8px;padding:8px}
+.msg{font-size:13px;color:var(--muted);margin-top:6px;min-height:1.2em}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Garden mouse</h1>
+    <div class="chips"><div class="chip" id="trialChip">Practice</div><div class="chip">Snacks <span id="snacks">0</span></div></div>
+  </header>
+  <div class="stage" id="stage">
+    <canvas id="arena" aria-label="Top-down view of a garden: the mouse at the bottom, a snack at the top, and sculptures in between"></canvas>
+    <div class="toast" id="toast" role="status"></div>
+    <div class="overlay" id="ov"><div class="panel" id="panel"></div></div>
+  </div>
+  <p class="note" id="footNote">Move your cursor inside the garden and the mouse follows.</p>
+
+  <section id="research" hidden>
+    <h2>Researcher view</h2>
+    <p class="note" style="margin-top:0" id="saveStatus"></p>
+    <div class="stats" id="stats"></div>
+    <h3>Pass-by gardens: closest the mouse came to the sculpture</h3>
+    <table id="passTable"></table>
+    <h3>Gap gardens: where the mouse went through the gap</h3>
+    <table id="gapTable"></table>
+    <h3>All paths (pass-by gardens, sculpture shifted to one spot)</h3>
+    <div class="paths"><canvas id="pathCanvas" aria-label="All pass-by paths overlaid"></canvas></div>
+    <div class="row">
+      <button class="secondary" id="copyJson">Copy full data file (JSON)</button>
+      <button class="secondary" id="copyTrials">Copy gardens CSV</button>
+      <button class="secondary" id="restart">Run again</button>
+    </div>
+    <div class="msg" id="copyMsg"></div>
+    <textarea id="csvOut" readonly hidden aria-label="Data output"></textarea>
+  </section>
+</div>
+
+<script>
+(() => {
+/* ============ STUDY SETTINGS ============ */
+const DATAPIPE_ID='GbGV73lanSQa';// DataPipe experiment ID for this study. Empty = nothing is saved (pilot mode).
+const COMPLETION_URL='';     // Prolific completion link
+const VERSION='garden-paths-v1';
+/* ======================================== */
+/* Design
+   Pass-by gardens: one sculpture sits just beside the straight line from the mouse to the snack, so the path has to bend
+   around it. Varied: sharpness (0, 1/3, 2/3, 1), point depth (shallow/deep), side (left/right of the line), and whether a
+   point (tip) or a dip between points (valley) faces the line. Contact-risk models predict extra clearance for sharp,
+   deep, tip-facing sculptures; a global-dislike model predicts the same berth whatever faces the path.
+   Gap gardens: two sculptures with a gap on the straight line. Where the mouse crosses the gap (toward which sculpture)
+   is a continuous approach-avoidance measure with equal path length either way. */
+
+const S=600,C=S/2,AR=262;
+const OBST_R=46, MOUSE_R=12, SPEED=2.0, NIBBLE_MS=220, TIMEOUT_MS=15000;
+const START={x:C,y:C+215}, GOAL={x:C,y:C-205}, OBST_Y=C+5, PASS_OFFSET=60, GAP_EDGE=58;   // GAP_EDGE: half-gap between the shapes' mean edges
+const SHARP_LV=[0,1/3,2/3,1], COUNT=7;
+const FOODS=['cheese','strawberry','blueberries','seeds','cracker','apple'];
+const STONES=[['#b9a99a','#8f7f70','#d9cdbf'],['#a3abb8','#7b8494','#c9d0da'],['#b7a6b9','#8c7b8f','#d6cad8'],['#a9b5a2','#7f8c79','#cbd5c5'],['#c2ad94','#97836b','#ddd0be']];
+
+const cv=document.getElementById('arena'),ctx=cv.getContext('2d'),stage=document.getElementById('stage');
+const dpr=Math.min(2,window.devicePixelRatio||1);cv.width=S*dpr;cv.height=S*dpr;ctx.scale(dpr,dpr);
+const ov=document.getElementById('ov'),panel=document.getElementById('panel'),toastEl=document.getElementById('toast');
+const trialChip=document.getElementById('trialChip'),snacksEl=document.getElementById('snacks');
+const RESEARCHER=(()=>{try{return location.hash==='#researcher';}catch(e){return false;}})();
+const params=(()=>{try{return new URLSearchParams(location.search);}catch(e){return new URLSearchParams();}})();
+const PID=params.get('PROLIFIC_PID')||'test-'+Math.random().toString(36).slice(2,8);
+const STUDY_ID=params.get('STUDY_ID')||'',SESSION_ID=params.get('SESSION_ID')||Math.random().toString(36).slice(2,10);
+if(!DATAPIPE_ID)document.getElementById('footNote').textContent='Pilot preview: no data is saved. Move your cursor inside the garden and the mouse follows.';
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const rand=(a,b)=>a+Math.random()*(b-a);
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const r3=v=>v==null?null:Math.round(v*1000)/1000;
+
+/* ---------- sand ---------- */
+const bed=(()=>{const c=document.createElement('canvas');c.width=S*dpr;c.height=S*dpr;const b=c.getContext('2d');b.scale(dpr,dpr);
+  b.fillStyle='#e9e1d2';b.fillRect(0,0,S,S);b.save();b.beginPath();b.arc(C,C,AR,0,Math.PI*2);b.clip();b.fillStyle='#ead7b0';b.fillRect(0,0,S,S);
+  for(let i=0;i<2400;i++){const a=Math.random()*Math.PI*2,r=Math.sqrt(Math.random())*AR;b.fillStyle=['rgba(205,175,125,.35)','rgba(245,230,200,.6)','rgba(180,150,105,.25)'][i%3];b.fillRect(C+r*Math.cos(a),C+r*Math.sin(a),1.6,1.6);}
+  b.restore();b.lineWidth=14;b.strokeStyle='rgba(255,255,255,.7)';b.beginPath();b.arc(C,C,AR+7,0,Math.PI*2);b.stroke();
+  b.lineWidth=1.5;b.strokeStyle='#d3c6ad';b.beginPath();b.arc(C,C,AR+14,0,Math.PI*2);b.stroke();b.beginPath();b.arc(C,C,AR,0,Math.PI*2);b.stroke();
+  b.fillStyle='rgba(120,95,60,.18)';b.beginPath();b.ellipse(START.x,START.y+8,22,12,0,0,Math.PI*2);b.fill();return c;})();
+
+/* ---------- sculptures with controlled orientation ----------
+   facing = angle (radians) pointing from the sculpture toward the path; orient 'tip' puts an outer point exactly on that
+   angle, 'valley' puts the dip between two points there. No angular jitter, so orientation is exact. */
+function makeBase(depth,facing,orient){
+  const ph=facing+(orient==='valley'?Math.PI/COUNT:0),inner=depth==='deep'?.48:.74,pts=[];
+  for(let i=0;i<2*COUNT;i++){const a=ph+i*Math.PI/COUNT,r=i%2?inner:1;pts.push([r*Math.cos(a),r*Math.sin(a)]);}
+  return pts;
+}
+function corners(pts,s){const n=pts.length,t=.5*(1-s);return pts.map((p,i)=>{const pr=pts[(i-1+n)%n],nx=pts[(i+1)%n];
+  return {p,a:[p[0]+(pr[0]-p[0])*t,p[1]+(pr[1]-p[1])*t],b:[p[0]+(nx[0]-p[0])*t,p[1]+(nx[1]-p[1])*t]};});}
+function outline(pts,s){const cs=corners(pts,s),out=[];
+  cs.forEach((c,i)=>{for(let k=0;k<12;k++){const u=k/12,w0=(1-u)*(1-u),w1=2*(1-u)*u,w2=u*u;out.push([w0*c.a[0]+w1*c.p[0]+w2*c.b[0],w0*c.a[1]+w1*c.p[1]+w2*c.b[1]]);}
+    const nxt=cs[(i+1)%cs.length].a;for(let k=0;k<6;k++)out.push([c.b[0]+(nxt[0]-c.b[0])*k/6,c.b[1]+(nxt[1]-c.b[1])*k/6]);});
+  return out;}
+const polyArea=o=>Math.abs(o.reduce((s,p,i)=>{const q=o[(i+1)%o.length];return s+p[0]*q[1]-q[0]*p[1];},0))/2;
+function makeSculpture(x,y,sharp,depth,facing,orient){
+  const base=makeBase(depth,facing,orient),unit=outline(base,sharp),k=Math.sqrt(Math.PI*OBST_R*OBST_R/polyArea(unit));
+  const pts=base.map(([a,b])=>[a*k,b*k]),poly=unit.map(([a,b])=>[a*k,b*k]);
+  const rs=poly.map(([a,b])=>Math.hypot(a,b));
+  // distance from the centre to the outline along the facing direction (how far the shape reaches toward the path)
+  const reach=Math.max(...poly.filter(([a,b])=>Math.abs(Math.atan2(b,a)-facing+Math.PI*4)%(Math.PI*2)<.08||Math.abs(Math.atan2(b,a)-facing+Math.PI*4)%(Math.PI*2)>Math.PI*2-.08).map(([a,b])=>Math.hypot(a,b)).concat([0]));
+  return {x,y,sharp,depth,facing,orient,pts,poly,maxR:Math.max(...rs),meanR:rs.reduce((a,b)=>a+b,0)/rs.length,reach,kind:sharp>=.5?'sharp':'round'};
+}
+function tracePath(c,sh){const cs=corners(sh.pts,sh.sharp);c.beginPath();c.moveTo(cs[0].a[0],cs[0].a[1]);
+  cs.forEach((q,i)=>{c.quadraticCurveTo(q.p[0],q.p[1],q.b[0],q.b[1]);const nx=cs[(i+1)%cs.length].a;c.lineTo(nx[0],nx[1]);});c.closePath();}
+function drawSculpture(c,sh,cols){
+  c.save();c.translate(sh.x,sh.y);
+  c.save();c.translate(4,6);c.fillStyle='rgba(110,85,50,.22)';tracePath(c,sh);c.fill();c.restore();
+  c.fillStyle=cols[0];c.strokeStyle=cols[1];c.lineWidth=2;c.lineJoin=sh.sharp>.5?'miter':'round';tracePath(c,sh);c.fill();c.stroke();
+  c.save();c.translate(-3,-4);c.scale(.55,.55);c.fillStyle=cols[2];c.globalAlpha=.5;tracePath(c,sh);c.fill();c.restore();
+  c.restore();
+}
+// geometry helpers on the real outline (not a circle), so points physically matter
+function inside(sh,x,y){const px=x-sh.x,py=y-sh.y,P=sh.poly;let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const [xi,yi]=P[i],[xj,yj]=P[j];
+  if(((yi>py)!==(yj>py))&&(px<(xj-xi)*(py-yi)/(yj-yi)+xi))c=!c;}return c;}
+function nearest(sh,x,y){let best=1e9,bx=0,by=0,bi=0;const P=sh.poly;
+  for(let i=0;i<P.length;i++){const [ax,ay]=P[i],[cx,cy]=P[(i+1)%P.length],dx=cx-ax,dy=cy-ay,L=dx*dx+dy*dy||1;
+    const t=clamp(((x-sh.x-ax)*dx+(y-sh.y-ay)*dy)/L,0,1),qx=sh.x+ax+t*dx,qy=sh.y+ay+t*dy,d=Math.hypot(x-qx,y-qy);if(d<best){best=d;bx=qx;by=qy;bi=i;}}
+  return {d:inside(sh,x,y)?-best:best,x:bx,y:by,i:bi};}
+// is the nearest outline point on a tip? (angle within a quarter of a point-spacing from an outer control point)
+function onTip(sh,qx,qy){const a=Math.atan2(qy-sh.y,qx-sh.x),ph=sh.facing+(sh.orient==='valley'?Math.PI/COUNT:0),step=2*Math.PI/COUNT;
+  let d=((a-ph)%step+step)%step;d=Math.min(d,step-d);return d<step*.18;}
+
+/* ---------- snacks ---------- */
+function drawFood(c,f,x,y,k){
+  c.save();c.translate(x,y);c.scale(k||1,k||1);
+  c.fillStyle='rgba(110,85,50,.22)';c.beginPath();c.ellipse(2,3,11,8,0,0,6.3);c.fill();
+  if(f==='cheese'){c.fillStyle='#f4c542';c.strokeStyle='#b8860b';c.lineWidth=1.2;c.beginPath();c.moveTo(-10,6);c.lineTo(10,-2);c.lineTo(10,8);c.lineTo(-10,10);c.closePath();c.fill();c.stroke();c.fillStyle='#d9a52a';c.beginPath();c.arc(3,5,1.8,0,6.3);c.fill();}
+  else if(f==='strawberry'){c.fillStyle='#e0504f';c.beginPath();c.moveTo(0,10);c.bezierCurveTo(-11,4,-9,-7,0,-5);c.bezierCurveTo(9,-7,11,4,0,10);c.fill();
+    c.fillStyle='#ffe9a8';for(const [a,b] of [[-3,0],[3,1],[0,4],[-1,-2],[3,-3]]){c.beginPath();c.arc(a,b,.9,0,6.3);c.fill();}c.fillStyle='#5f8552';c.beginPath();c.ellipse(0,-6,5,2.5,0,0,6.3);c.fill();}
+  else if(f==='blueberries'){for(const [a,b] of [[-5,2],[5,2],[0,-5],[0,5]]){c.fillStyle='#4a5f9e';c.beginPath();c.arc(a,b,5,0,6.3);c.fill();c.fillStyle='rgba(255,255,255,.3)';c.beginPath();c.arc(a-1.5,b-1.5,1.6,0,6.3);c.fill();}}
+  else if(f==='seeds'){for(const [a,b,r] of [[-5,0,.4],[4,-3,-.5],[2,5,1.2],[-2,-6,2]]){c.save();c.translate(a,b);c.rotate(r);c.fillStyle='#4b4038';c.beginPath();c.ellipse(0,0,4.5,2.6,0,0,6.3);c.fill();c.strokeStyle='#d8cdbb';c.lineWidth=.8;c.beginPath();c.moveTo(-3,0);c.lineTo(3,0);c.stroke();c.restore();}}
+  else if(f==='cracker'){c.fillStyle='#e2b56b';c.strokeStyle='#b88a3e';c.lineWidth=1.2;c.beginPath();c.arc(0,0,10,0,6.3);c.fill();c.stroke();c.fillStyle='#b88a3e';for(const [a,b] of [[-4,-3],[3,-4],[0,1],[-4,4],[4,4]]){c.beginPath();c.arc(a,b,1,0,6.3);c.fill();}}
+  else{c.fillStyle='#f2efe0';c.strokeStyle='#c94b43';c.lineWidth=2.4;c.beginPath();c.arc(0,0,9,Math.PI*.15,Math.PI*1.15);c.closePath();c.fill();c.stroke();c.fillStyle='#5a4030';c.beginPath();c.ellipse(-1,2,1.2,2,0,0,6.3);c.fill();}
+  c.restore();
+}
+
+/* ---------- trial list ---------- */
+function makeTrials(){
+  const pass=[];
+  for(const sharp of SHARP_LV)for(const orient of ['tip','valley'])for(const side of ['left','right'])for(const depth of ['shallow','deep'])pass.push({type:'pass',sharp,orient,side,depth});   // 4 x 2 x 2 x 2 = 32 pass-by gardens
+  const gap=[];
+  for(const depth of ['shallow','deep'])for(const sharpSide of ['left','right'])for(let rep=0;rep<2;rep++)gap.push({type:'gap',pair:'sharp-round',sharpSide,depth});
+  for(const pair of ['round-round','sharp-sharp'])for(let rep=0;rep<2;rep++)gap.push({type:'gap',pair,sharpSide:null,depth:pick(['shallow','deep'])});   // 12 gap gardens
+  const practice=[{type:'pass',sharp:.5,orient:'tip',side:'right',depth:'shallow'},{type:'gap',pair:'round-round',sharpSide:null,depth:'shallow'},{type:'pass',sharp:.5,orient:'valley',side:'left',depth:'shallow'}];
+  return practice.map((t,i)=>build(t,-1-i,true)).concat(shuffle(pass.concat(gap)).map((t,i)=>build(t,i+1,false)));
+}
+function build(spec,idx,practice){
+  const g={idx,practice,type:spec.type,food:pick(FOODS),cols:pick(STONES),spec,sculptures:[]};
+  if(spec.type==='pass'){
+    const sx=spec.side==='right'?C+PASS_OFFSET:C-PASS_OFFSET,facing=spec.side==='right'?Math.PI:0;   // face toward the straight line
+    g.sculptures.push(makeSculpture(sx,OBST_Y,spec.sharp,spec.depth,facing,spec.orient));
+  } else {
+    const kinds=spec.pair==='sharp-round'?(spec.sharpSide==='left'?['sharp','round']:['round','sharp']):spec.pair==='round-round'?['round','round']:['sharp','sharp'];
+    kinds.forEach((k,i)=>{const sharp=k==='sharp'?pick([2/3,1]):pick([0,1/3]),facing=i===0?0:Math.PI,orient=pick(['tip','valley']);
+      const tmp=makeSculpture(0,0,sharp,spec.depth,facing,orient),dx=GAP_EDGE+tmp.meanR;
+      g.sculptures.push(makeSculpture(i===0?C-dx:C+dx,OBST_Y,sharp,spec.depth,facing,orient));});
+  }
+  return g;
+}
+
+/* ---------- state ---------- */
+let state='intro',trials=[],ti=0,G=null,snacks=0,lastT=performance.now(),tStart=0,lastLog=0,startedAt='';
+let samples=[],rows=[],nibble=null,pointer=null,firstMove=null,contacts=0,inContact=false,awareness={},saveResult='not saved',lastData=null,hiddenCount=0;
+const mouse={x:START.x,y:START.y,h:-Math.PI/2,v:0,step:0};
+function showPanel(html,btn,fn){panel.innerHTML=html+(btn?'<div class="row"><button id="go">'+btn+'</button></div>':'');ov.hidden=false;
+  if(btn){const b=document.getElementById('go');b.onclick=()=>fn();setTimeout(()=>b.focus(),30);}}
+const hidePanel=()=>{ov.hidden=true;};
+let tt;function toast(m,ms){toastEl.textContent=m;toastEl.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>toastEl.classList.remove('show'),ms||1200);}
+function toLocal(e){const r=cv.getBoundingClientRect();return {x:(e.clientX-r.left)/r.width*S,y:(e.clientY-r.top)/r.height*S};}
+stage.addEventListener('pointermove',e=>{pointer=toLocal(e);});
+stage.addEventListener('pointerdown',e=>{pointer=toLocal(e);});
+stage.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse')pointer=null;});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='go')hiddenCount++;});
+
+function step(f,now){
+  let tx=mouse.x,ty=mouse.y;if(pointer){tx=pointer.x;ty=pointer.y;}
+  const dx=tx-mouse.x,dy=ty-mouse.y,d=Math.hypot(dx,dy),want=d>6?Math.min(SPEED,d*0.07):0;
+  mouse.v+=(want-mouse.v)*0.16*f;
+  if(d>6){let da=Math.atan2(dy,dx)-mouse.h;while(da>Math.PI)da-=2*Math.PI;while(da<-Math.PI)da+=2*Math.PI;mouse.h+=da*Math.min(1,0.2*f);}
+  let nx=mouse.x+Math.cos(mouse.h)*mouse.v*f,ny=mouse.y+Math.sin(mouse.h)*mouse.v*f;
+  const rr=Math.hypot(nx-C,ny-C),lim=AR-MOUSE_R-4;if(rr>lim){nx=C+(nx-C)/rr*lim;ny=C+(ny-C)/rr*lim;}
+  // collide with the real outline: push the mouse out to MOUSE_R from the nearest edge point
+  let touching=false;
+  for(const sh of G.sculptures){const n=nearest(sh,nx,ny);if(n.d<MOUSE_R){touching=true;const ux=nx-n.x,uy=ny-n.y,L=Math.hypot(ux,uy)||1,sg=n.d<0?-1:1;nx=n.x+sg*ux/L*MOUSE_R;ny=n.y+sg*uy/L*MOUSE_R;
+    if(inside(sh,nx,ny)){const ox=nx-sh.x,oy=ny-sh.y,l=Math.hypot(ox,oy)||1;nx=sh.x+ox/l*(sh.maxR+MOUSE_R);ny=sh.y+oy/l*(sh.maxR+MOUSE_R);}}}
+  if(touching&&!inContact&&state==='go')contacts++;inContact=touching;
+  mouse.x=nx;mouse.y=ny;mouse.step+=mouse.v*f*0.35;
+  if(state!=='go')return;
+  if(firstMove===null&&Math.hypot(mouse.x-START.x,mouse.y-START.y)>8)firstMove=Math.round(now-tStart);
+  if(Math.hypot(GOAL.x-mouse.x,GOAL.y-mouse.y)<MOUSE_R+12){if(!nibble)nibble=now;else if(now-nibble>NIBBLE_MS){finish(now);return;}}else nibble=null;
+  if(now-lastLog>=40){lastLog=now;
+    const s={trial:G.idx,t_ms:Math.round(now-tStart),x:r3((mouse.x-C)/AR),y:r3((mouse.y-C)/AR),px:pointer?r3((pointer.x-C)/AR):null,py:pointer?r3((pointer.y-C)/AR):null,speed:+mouse.v.toFixed(2),contact:touching?1:0};
+    G.sculptures.forEach((sh,i)=>{const n=nearest(sh,mouse.x,mouse.y);s['edge_'+i]=r3(n.d/AR);s['center_'+i]=r3(Math.hypot(sh.x-mouse.x,sh.y-mouse.y)/AR);s['tip_'+i]=onTip(sh,n.x,n.y)?1:0;});
+    samples.push(s);}
+  if(now-tStart>TIMEOUT_MS)finish(now,true);
+}
+function finish(now,timedOut){
+  state='between';
+  const mine=samples.filter(s=>s.trial===G.idx);
+  const row={trial:G.idx,practice:G.practice?1:0,type:G.type,food:G.food,timed_out:timedOut?1:0,rt_move_ms:firstMove,duration_ms:Math.round(now-tStart),contacts};
+  const xAtObst=(()=>{let b=null,bd=1e9;for(const s of mine){const d=Math.abs(C+s.y*AR-OBST_Y);if(d<bd){bd=d;b=s;}}return b?C+b.x*AR:null;})();
+  const pathLen=mine.reduce((a,s,i)=>i?a+Math.hypot(s.x-mine[i-1].x,s.y-mine[i-1].y):0,0);
+  row.path_length=r3(pathLen);row.straight_length=r3(Math.hypot(GOAL.x-START.x,GOAL.y-START.y)/AR);
+  if(G.type==='pass'){const sh=G.sculptures[0],sp=G.spec;
+    const minEdge=mine.length?Math.min(...mine.map(s=>s.edge_0)):null,atMin=mine.find(s=>s.edge_0===minEdge);
+    Object.assign(row,{sharpness:r3(sp.sharp),depth:sp.depth,orient:sp.orient,sculpture_side:sp.side,reach_toward_path:r3(sh.reach/AR),
+      min_edge_dist:minEdge,min_center_dist:mine.length?Math.min(...mine.map(s=>s.center_0)):null,closest_point_on_tip:atMin?atMin.tip_0:null,
+      passed_side:xAtObst==null?null:((xAtObst<sh.x)===(sp.side==='right')?'path side':'far side'),
+      lateral_at_sculpture:xAtObst==null?null:r3(Math.abs(xAtObst-sh.x)/AR)});
+  } else {const sp=G.spec,[a,b]=G.sculptures,mid=(a.x+b.x)/2;
+    // signed position in the gap: + = toward the sharper sculpture (sharp-round gardens), toward the right one otherwise
+    const towardSharp=sp.pair==='sharp-round'?(sp.sharpSide==='right'?1:-1):1;
+    Object.assign(row,{pair:sp.pair,sharp_side:sp.sharpSide,depth:sp.depth,left_sharpness:r3(a.sharp),right_sharpness:r3(b.sharp),left_orient:a.orient,right_orient:b.orient,
+      gap_width:r3((b.x-b.meanR-(a.x+a.meanR))/AR),went_through_gap:xAtObst!=null&&xAtObst>a.x&&xAtObst<b.x?1:0,
+      gap_offset_toward_sharp:xAtObst==null?null:r3(towardSharp*(xAtObst-mid)/AR),
+      min_edge_left:mine.length?Math.min(...mine.map(s=>s.edge_0)):null,min_edge_right:mine.length?Math.min(...mine.map(s=>s.edge_1)):null});
+  }
+  rows.push(row);
+  if(!G.practice&&!timedOut){snacks++;snacksEl.textContent=snacks;}
+  if(!timedOut)toast('Yum!',500);
+  ti++;
+  setTimeout(()=>{
+    if(G.practice&&trials[ti]&&!trials[ti].practice)showPanel('<h2>You\'ve got it!</h2><p>Now the real gardens. Just get the mouse to the snack each time, however you like.</p>','Start',()=>{hidePanel();startTrial();});
+    else if(ti===Math.ceil(trials.length/2)+1&&!G.practice)showPanel('<h2>Halfway there</h2><p>Take a short break if you like.</p>','Keep going',()=>{hidePanel();startTrial();});
+    else if(ti<trials.length)startTrial();else askAwareness();
+  },450);
+}
+function startTrial(){
+  G=trials[ti];nibble=null;firstMove=null;contacts=0;inContact=false;mouse.x=START.x;mouse.y=START.y;mouse.v=0;mouse.h=-Math.PI/2;
+  const main=trials.filter(t=>!t.practice).length;
+  trialChip.textContent=G.practice?'Practice '+(ti+1)+' of 3':'Garden '+G.idx+' of '+main;
+  tStart=lastLog=performance.now();state='go';
+}
+
+/* ---------- start, awareness, saving, debrief ---------- */
+function newRun(){
+  trials=makeTrials();ti=0;snacks=0;snacksEl.textContent='0';samples=[];rows=[];awareness={};saveResult='not saved';hiddenCount=0;lastData=null;
+  G=trials[0];mouse.x=START.x;mouse.y=START.y;document.getElementById('research').hidden=true;trialChip.textContent='Practice';
+  const touchOnly=(()=>{try{return matchMedia('(pointer:coarse)').matches&&!matchMedia('(any-pointer:fine)').matches;}catch(e){return false;}})();
+  showPanel('<h2>Help a garden mouse get its snack</h2><p>In each garden there\'s a snack at the top. Guide the mouse to it: move your cursor and the mouse follows. Hold it on the snack for a moment to eat it.</p><p>There will be sculptures in the way, so find your own route. About 5 minutes.</p>'+
+    (touchOnly?'<p class="small"><b>This study works best on a computer with a mouse or trackpad.</b></p>':'')+
+    '<p class="small">Consent placeholder: your IRB-approved consent text goes here, before anything starts.</p>','I agree, start practice',()=>{hidePanel();startedAt=new Date().toISOString();startTrial();});
+  state='intro';
+}
+function askAwareness(){
+  state='questions';trialChip.textContent='Almost done';
+  showPanel('<h2>A few quick questions</h2><p>There are no right or wrong answers.</p>'+
+    '<label for="q1">What do you think this study was about?</label><textarea id="q1"></textarea>'+
+    '<label for="q2">Did you notice anything about the sculptures or how you moved around them?</label><textarea id="q2"></textarea>'+
+    '<label>Did you try to keep the mouse away from any part of the sculptures?</label><div class="opts">'+
+    ['Yes, the pointy parts','Yes, other parts','No','Not sure'].map(t=>'<label><input type="radio" name="q3" value="'+t+'"> '+t+'</label>').join('')+'</div><div class="err" id="qerr"></div>','Continue',()=>{
+      const q1=document.getElementById('q1').value.trim(),q3=(document.querySelector('input[name=q3]:checked')||{}).value;
+      if(!q1||!q3){document.getElementById('qerr').textContent='Please answer the first question and choose an option.';return;}
+      awareness={study_guess:q1,noticed:document.getElementById('q2').value.trim(),avoided_parts:q3};saveAndDebrief();});
+}
+function buildData(){
+  return {version:VERSION,prolific_pid:PID,study_id:STUDY_ID,session_id:SESSION_ID,started_at:startedAt,finished_at:new Date().toISOString(),
+    screen:{w:screen.width,h:screen.height,stage_px:Math.round(stage.getBoundingClientRect().width),dpr:window.devicePixelRatio||1},
+    user_agent:navigator.userAgent,tab_switches:hiddenCount,snacks,awareness,
+    geometry:{arena_radius_px:AR,mouse_radius:r3(MOUSE_R/AR),start:[r3((START.x-C)/AR),r3((START.y-C)/AR)],goal:[r3((GOAL.x-C)/AR),r3((GOAL.y-C)/AR)],units:'arena radii, origin at arena centre, y down'},
+    stimuli:trials.map(t=>({trial:t.idx,practice:t.practice,type:t.type,spec:t.spec,sculptures:t.sculptures.map(sh=>({x:r3((sh.x-C)/AR),y:r3((sh.y-C)/AR),sharpness:r3(sh.sharp),depth:sh.depth,
+      orient:sh.orient,facing_rad:r3(sh.facing),control_points:sh.pts.map(([a,b])=>[r3(a/AR),r3(b/AR)]),mean_r:r3(sh.meanR/AR),max_r:r3(sh.maxR/AR)}))})),
+    trials:rows,samples};
+}
+async function saveData(data){
+  if(!DATAPIPE_ID)return 'skipped (pilot mode, no DataPipe ID set)';
+  for(let attempt=1;attempt<=3;attempt++){
+    try{const r=await fetch('https://pipe.jspsych.org/api/data/',{method:'POST',headers:{'Content-Type':'application/json',Accept:'*/*'},
+        body:JSON.stringify({experimentID:DATAPIPE_ID,filename:PID+'_'+SESSION_ID+'.json',data:JSON.stringify(data)})});
+      if(r.ok)return 'saved';}catch(e){}
+    await new Promise(res=>setTimeout(res,1500*attempt));
+  }
+  return 'failed';
+}
+async function saveAndDebrief(){
+  state='saving';showPanel('<h2>Saving your responses…</h2><p class="small">Please keep this page open.</p>');
+  lastData=buildData();saveResult=await saveData(lastData);
+  if(saveResult==='failed'){showPanel('<h2>We couldn\'t save your responses</h2><p>Please check your internet connection and try again.</p>','Try again',saveAndDebrief);return;}
+  state='done';trialChip.textContent='All done';
+  showPanel('<h2>All done. The mouse ate '+snacks+' snacks!</h2><p><b>What this study was really about:</b> the sculptures varied in how spiky they were, how deep their points were, and whether a point or a dip faced the mouse\'s path. We recorded exactly how the mouse moved around them, to test whether people keep extra distance from pointy parts specifically or from spiky sculptures as a whole.</p><p>We did not tell you beforehand because knowing could change how you move. If you have questions or want your data removed, contact the research team.</p>',
+    RESEARCHER?'See researcher view':'Finish',RESEARCHER?showResearch:finishStudy);
+}
+function finishStudy(){if(COMPLETION_URL){location.href=COMPLETION_URL;return;}showPanel('<h2>Thank you!</h2><p>You have finished the study. You can close this tab.</p>');}
+
+/* ---------- drawing ---------- */
+function drawMouse(c){
+  const w=Math.sin(mouse.step)*.12;c.save();c.translate(mouse.x,mouse.y);c.rotate(mouse.h);
+  c.strokeStyle='#d9a7b0';c.lineWidth=2.5;c.lineCap='round';c.beginPath();c.moveTo(-MOUSE_R,0);c.bezierCurveTo(-MOUSE_R-12,10*Math.sin(mouse.step*.7),-MOUSE_R-20,-8,-MOUSE_R-28,4*Math.sin(mouse.step));c.stroke();
+  c.fillStyle='rgba(110,85,50,.2)';c.beginPath();c.ellipse(2,4,MOUSE_R+3,MOUSE_R*.8,0,0,6.3);c.fill();
+  c.fillStyle='#cfc8d2';c.beginPath();c.ellipse(0,0,MOUSE_R+3,MOUSE_R*.78,w,0,6.3);c.fill();c.beginPath();c.ellipse(MOUSE_R+2,0,8,7,0,0,6.3);c.fill();
+  for(const s of [-1,1]){c.fillStyle='#cfc8d2';c.beginPath();c.arc(MOUSE_R-3,s*8.5,6,0,6.3);c.fill();c.fillStyle='#efc1c9';c.beginPath();c.arc(MOUSE_R-3,s*8.5,3.6,0,6.3);c.fill();
+    c.fillStyle='#2b2a28';c.beginPath();c.arc(MOUSE_R+5,s*3.4,1.5,0,6.3);c.fill();}
+  c.fillStyle='#e58a9a';c.beginPath();c.arc(MOUSE_R+10.5,0,2,0,6.3);c.fill();c.restore();
+}
+function render(now){
+  ctx.drawImage(bed,0,0,S,S);
+  if(G&&state!=='intro'){
+    for(const sh of G.sculptures)drawSculpture(ctx,sh,G.cols);
+    if(state==='go'){drawFood(ctx,G.food,GOAL.x,GOAL.y,1+Math.sin(now/380)*.05);
+      if(nibble){const q=clamp((now-nibble)/NIBBLE_MS,0,1);ctx.strokeStyle='#e9b949';ctx.lineWidth=3.5;ctx.lineCap='round';ctx.beginPath();ctx.arc(GOAL.x,GOAL.y,22,-Math.PI/2,-Math.PI/2+q*Math.PI*2);ctx.stroke();}}
+  }
+  drawMouse(ctx);
+  if(pointer&&state==='go'){ctx.strokeStyle='rgba(43,42,40,.35)';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(pointer.x,pointer.y,7,0,6.3);ctx.stroke();}
+}
+
+/* ---------- researcher view ---------- */
+function showResearch(){
+  hidePanel();const sec=document.getElementById('research');sec.hidden=false;
+  document.getElementById('saveStatus').textContent='Data file: '+saveResult+'. Participants never see this view. One person\'s data is noisy; this checks that everything is recorded.';
+  const main=rows.filter(r=>!r.practice&&!r.timed_out),pass=main.filter(r=>r.type==='pass'),gap=main.filter(r=>r.type==='gap');
+  const mean=a=>a.length?(a.reduce((x,y)=>x+y,0)/a.length):null,f=v=>v==null?'n/a':(v*AR).toFixed(1)+' px';
+  document.getElementById('stats').innerHTML=[[main.length,'Gardens completed'],[main.reduce((a,r)=>a+r.contacts,0),'Times the mouse touched a sculpture'],
+    [f(mean(gap.filter(r=>r.pair==='sharp-round'&&r.went_through_gap).map(r=>r.gap_offset_toward_sharp))),'Average gap position toward the sharp sculpture (negative = toward round)']]
+    .map(s=>'<div class="stat"><div class="n">'+s[0]+'</div><div class="l">'+s[1]+'</div></div>').join('');
+  const cell=(s,o)=>{const a=pass.filter(r=>Math.abs(r.sharpness-s)<.01&&r.orient===o).map(r=>r.min_edge_dist);return f(mean(a))+' <small class="note">('+a.length+')</small>';};
+  document.getElementById('passTable').innerHTML='<tr><th>Sharpness</th><th>Point faces path</th><th>Dip faces path</th></tr>'+SHARP_LV.map(s=>'<tr><td>'+Math.round(s*100)+'%</td><td>'+cell(s,'tip')+'</td><td>'+cell(s,'valley')+'</td></tr>').join('');
+  const gcell=p=>{const a=gap.filter(r=>r.pair===p&&r.went_through_gap);return [f(mean(a.map(r=>r.gap_offset_toward_sharp))),a.length+' / '+gap.filter(r=>r.pair===p).length];};
+  document.getElementById('gapTable').innerHTML='<tr><th>Pair</th><th>Average position (+ toward sharp / right)</th><th>Went through the gap</th></tr>'+['sharp-round','round-round','sharp-sharp'].map(p=>{const [m,n]=gcell(p);return '<tr><td>'+p+'</td><td>'+m+'</td><td>'+n+'</td></tr>';}).join('');
+  // overlay of pass-by paths, mirrored so the sculpture always sits to the right of the line
+  const pc=document.getElementById('pathCanvas'),k=420/S;pc.width=420*dpr;pc.height=420*dpr;const x=pc.getContext('2d');x.scale(dpr*k,dpr*k);x.drawImage(bed,0,0,S,S);
+  x.strokeStyle='rgba(43,42,40,.35)';x.setLineDash([6,6]);x.beginPath();x.moveTo(START.x,START.y);x.lineTo(GOAL.x,GOAL.y);x.stroke();x.setLineDash([]);
+  x.fillStyle='rgba(150,130,150,.35)';x.beginPath();x.arc(C+PASS_OFFSET,OBST_Y,OBST_R,0,6.3);x.fill();
+  for(const r of pass){const flip=r.sculpture_side==='left'?-1:1,col=r.sharpness>=.5?(r.orient==='tip'?'rgba(217,130,43,.7)':'rgba(217,130,43,.35)'):(r.orient==='tip'?'rgba(29,158,117,.7)':'rgba(29,158,117,.35)');
+    x.strokeStyle=col;x.lineWidth=2.5;x.beginPath();let first=true;for(const s of samples){if(s.trial!==r.trial)continue;const px=C+flip*s.x*AR,py=C+s.y*AR;first?x.moveTo(px,py):x.lineTo(px,py);first=false;}x.stroke();}
+  sec.scrollIntoView({behavior:'smooth'});
+}
+function toCSV(list){if(!list.length)return '';const keys=[...new Set(list.flatMap(o=>Object.keys(o)))];return [keys.join(',')].concat(list.map(r=>keys.map(c=>JSON.stringify(r[c]??'')).join(','))).join('\n');}
+async function copy(txt,label){const msg=document.getElementById('copyMsg'),ta=document.getElementById('csvOut');
+  try{await navigator.clipboard.writeText(txt);msg.textContent=label+' copied.';ta.hidden=true;}
+  catch(e){ta.hidden=false;ta.value=txt;ta.select();msg.textContent='Copying was blocked, so it is shown below. Select it and copy.';}}
+document.getElementById('copyJson').onclick=()=>copy(JSON.stringify(lastData||buildData(),null,1),'Full data file');
+document.getElementById('copyTrials').onclick=()=>copy(toCSV(rows),'Gardens CSV');
+document.getElementById('restart').onclick=()=>{window.scrollTo({top:0,behavior:'smooth'});newRun();};
+
+function frame(now){const f=Math.min(3,(now-lastT)/16.67);lastT=now;if(state==='go'||state==='between')step(f,now);render(now);requestAnimationFrame(frame);}
+newRun();requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
