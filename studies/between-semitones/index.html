@@ -66,7 +66,7 @@ th{color:var(--muted);font-weight:500}
     <h2>Researcher view</h2>
     <p class="note" style="margin-top:0" id="saveStatus"></p>
     <div class="stats" id="stats"></div>
-    <h3>Sensitivity (d′) for each 20-cent pair, by timbre</h3>
+    <h3>Sensitivity (d′) for each 40-cent pair, by timbre</h3>
     <canvas id="dprime" width="640" height="300" aria-label="d prime by interval pair for harmonic and stretched timbres"></canvas>
     <table id="pairTable"></table>
     <div class="row">
@@ -85,15 +85,15 @@ th{color:var(--muted);font-weight:500}
 const DATAPIPE_ID='';        // DataPipe experiment ID for this study. Empty = nothing is saved (pilot mode). Set ONLY after IRB approval.
 const COMPLETION_URL='';     // Prolific completion link
 const SCREENOUT_URL='';      // Prolific link for people who fail the headphone check (optional)
-const VERSION='between-semitones-v1';
-const REPS=3;                // repetitions of each same/different item per timbre block (3 gives 108 trials per block)
+const VERSION='between-semitones-v2';
+const REPS=2;                // repetitions of each same/different item per timbre block (2 gives 56 + 4 catch = 60 trials per block)
 /* ======================================== */
 /* Design
    Question: do lay listeners show a discrimination peak along a minor-to-major third continuum (hidden Western interval
    categories), and does that profile change when the tones have stretched (inharmonic) partials?
    Stimuli: melodic intervals of 300-400 cents in 10-cent steps. Each trial plays two intervals (A then X) on different
    roots (roving, so listeners must compare interval size, not absolute pitch) and asks: same interval or different?
-   Pairs: neighbours 20 cents apart (300/320 ... 380/400), 9 pairs. Per pair and block: 'different' trials in both orders
+   Pairs: 40 cents apart (300/340 ... 360/400), 7 pairs (v2: v1 used 20-cent pairs and larger roving, which piloted as near-impossible). Per pair and block: 'different' trials in both orders
    and 'same' trials built from each member, REPS times each. Plus 4 easy catch trials (300 vs 400) per block.
    Timbre (within participants, block order counterbalanced at random): harmonic complex tone (partials n*f0) vs
    stretched complex tone (partials f0*n^STRETCH_EXP, i.e. octave stretched to 2.2:1). Interval size is always defined by f0.
@@ -102,12 +102,13 @@ const REPS=3;                // repetitions of each same/different item per timb
    'same' (false alarms) trials. Category account predicts a peak near 340-360 cents for harmonic tones. */
 
 const CONT=[300,310,320,330,340,350,360,370,380,390,400];
-const PAIRS=CONT.slice(0,-2).map((c,i)=>[c,CONT[i+2]]);       // 20-cent neighbours
+const PAIR_STEP=4;           // pair members are PAIR_STEP*10 cents apart (4 = 40 cents)
+const PAIRS=CONT.slice(0,-PAIR_STEP).map((c,i)=>[c,CONT[i+PAIR_STEP]]);
 const TIMBRES=['harmonic','stretched'];
 const N_PARTIALS=8, STRETCH_EXP=Math.log2(2.2);
 const TONE_MS=450, NOTE_GAP_MS=50, INTERVAL_GAP_MS=700, RAMP_MS=15, ITI_MS=500;
 const ROOT_LO=196, ROOT_HI=311;                // G3 to about E-flat 4
-const ROVE_MIN=150, ROVE_MAX=400;             // cents between the roots of A and X
+const ROVE_MIN=80, ROVE_MAX=200;              // cents between the roots of A and X
 const LEVEL=0.18;
 
 const card=document.getElementById('card'),chip=document.getElementById('chip');
@@ -184,7 +185,7 @@ function newRun(){
   order=shuffle([...TIMBRES]);blocks=order.map((t,i)=>makeBlock(t,i+1));if(QUICK)blocks=blocks.map(b=>b.slice(0,6));rows=[];checkRows=[];quest={};saveResult='not saved';lastData=null;hiddenCount=0;headphonePass=null;checkAttempts=0;
   document.getElementById('research').hidden=true;chip.textContent='Welcome';
   const touchOnly=(()=>{try{return matchMedia('(pointer:coarse)').matches&&!matchMedia('(any-pointer:fine)').matches;}catch(e){return false;}})();
-  show('<h2>How do we hear musical intervals?</h2><p>You will hear short pairs of musical notes and decide whether two of them sound the same or different. No musical training is needed. About 20 minutes.</p>'+
+  show('<h2>How do we hear musical intervals?</h2><p>You will hear short pairs of musical notes and decide whether two of them sound the same or different. No musical training is needed. About 12 minutes.</p>'+
     '<p><b>You need headphones</b> (not laptop or phone speakers) and a quiet place.</p>'+
     (touchOnly?'<p class="small"><b>This study works best on a computer.</b></p>':'')+
     '<p class="small">Consent placeholder: your IRB-approved consent text goes here, before anything starts.</p>'+
@@ -354,7 +355,8 @@ function showResearch(){
   // plot
   const cv=document.getElementById('dprime'),x=cv.getContext('2d'),W=cv.width,H=cv.height,L=50,R=20,T=20,B=40;x.clearRect(0,0,W,H);
   const ys=s.by_pair.map(p=>p.d_prime),ymin=Math.min(-0.5,...ys),ymax=Math.max(2.5,...ys);
-  const X=m=>L+(m-310)/(390-310)*(W-L-R),Y=v=>T+(ymax-v)/(ymax-ymin)*(H-T-B);
+  const mids=PAIRS.map(([a,b])=>(a+b)/2),mlo=mids[0],mhi=mids[mids.length-1];
+  const X=m=>L+(m-mlo)/(mhi-mlo)*(W-L-R),Y=v=>T+(ymax-v)/(ymax-ymin)*(H-T-B);
   x.strokeStyle='#e2ddd3';x.fillStyle='#6f6b64';x.font='12px system-ui';x.lineWidth=1;
   for(let v=Math.ceil(ymin);v<=ymax;v++){x.beginPath();x.moveTo(L,Y(v));x.lineTo(W-R,Y(v));x.stroke();x.fillText(v,L-22,Y(v)+4);}
   PAIRS.forEach(([lo,hi])=>x.fillText((lo+hi)/2,X((lo+hi)/2)-10,H-B+18));x.fillText('pair midpoint (cents)',W/2-55,H-6);
