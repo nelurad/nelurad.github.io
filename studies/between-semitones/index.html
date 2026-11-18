@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Listening study</title>
+<style>
+:root{--bg:#f6f3ee;--ink:#2b2a28;--muted:#6f6b64;--accent:#e9b949;--card:#fff;--line:#e2ddd3;--good:#1d9e75;--bad:#a33}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-rounded,"SF Pro Rounded",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.5}
+.wrap{max-width:720px;margin:0 auto;padding:18px 16px 48px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+h1{font-size:20px;font-weight:600;margin:0}
+h2{font-size:17px;font-weight:600;margin:0 0 8px}
+h3{font-size:15px;font-weight:600;margin:18px 0 6px}
+.chip{background:#fff;border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:14px;font-variant-numeric:tabular-nums}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:26px 26px;min-height:340px;display:flex;flex-direction:column;justify-content:center}
+.card p{margin:0 0 10px;font-size:15px}
+.card .small{font-size:13px;color:var(--muted)}
+.card label{display:block;font-size:14px;margin:12px 0 4px}
+.card input[type=text],.card input[type=number],.card select,.card textarea{width:100%;font:inherit;font-size:14px;border:1px solid var(--line);border-radius:10px;padding:8px;background:#fff}
+.card textarea{height:64px}
+.opts{display:flex;gap:14px;flex-wrap:wrap;font-size:14px}
+.opts label{display:flex;gap:6px;align-items:center;margin:0}
+.err{color:var(--bad);font-size:13px;min-height:1.2em;margin-top:6px}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.center{text-align:center}
+button{font:inherit;font-size:15px;padding:9px 18px;border-radius:999px;border:1px solid #d4a43a;background:var(--accent);color:#2a1d00;cursor:pointer}
+button.secondary{background:#fff;border-color:var(--line);color:var(--ink)}
+button:disabled{opacity:.4;cursor:default}
+button:focus-visible{outline:2px solid #2b2a28;outline-offset:2px}
+.big{font-size:17px;padding:12px 26px;min-width:150px}
+.lights{display:flex;justify-content:center;gap:22px;margin:18px 0 22px}
+.light{width:54px;height:54px;border-radius:50%;border:2px solid var(--line);background:#fbfaf7;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--muted);transition:background .08s,border-color .08s}
+.light.on{background:var(--accent);border-color:#d4a43a;color:#2a1d00}
+.fb{min-height:1.4em;font-size:15px;margin-top:10px}
+.fb.good{color:var(--good)}.fb.bad{color:var(--bad)}
+.bar{height:6px;background:var(--line);border-radius:999px;overflow:hidden;margin-top:18px}
+.bar>div{height:100%;background:var(--accent);width:0;transition:width .2s}
+.note{font-size:13px;color:var(--muted);margin:10px 0 0}
+#research{margin-top:28px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}
+#research[hidden]{display:none}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0 6px}
+.stat{border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.stat .n{font-size:22px;font-weight:600}
+.stat .l{font-size:13px;color:var(--muted)}
+table{border-collapse:collapse;width:100%;font-size:13px;margin-top:8px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-weight:500}
+#dprime{width:100%;max-width:640px;height:auto;display:block;border:1px solid var(--line);border-radius:12px;margin-top:8px}
+#csvOut{width:100%;height:120px;font-family:ui-monospace,Menlo,monospace;font-size:12px;margin-top:10px;border:1px solid var(--line);border-radius:8px;padding:8px}
+.msg{font-size:13px;color:var(--muted);margin-top:6px;min-height:1.2em}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Listening study</h1>
+    <div class="chip" id="chip">Welcome</div>
+  </header>
+  <div class="card" id="card" aria-live="polite"></div>
+  <p class="note" id="footNote">Please use headphones in a quiet room.</p>
+
+  <section id="research" hidden>
+    <h2>Researcher view</h2>
+    <p class="note" style="margin-top:0" id="saveStatus"></p>
+    <div class="stats" id="stats"></div>
+    <h3>Sensitivity (d′) for each 20-cent pair, by timbre</h3>
+    <canvas id="dprime" width="640" height="300" aria-label="d prime by interval pair for harmonic and stretched timbres"></canvas>
+    <table id="pairTable"></table>
+    <div class="row">
+      <button class="secondary" id="copyJson">Copy full data file (JSON)</button>
+      <button class="secondary" id="copyTrials">Copy trials CSV</button>
+      <button class="secondary" id="restart">Run again</button>
+    </div>
+    <div class="msg" id="copyMsg"></div>
+    <textarea id="csvOut" readonly hidden aria-label="Data output"></textarea>
+  </section>
+</div>
+
+<script>
+(() => {
+/* ============ STUDY SETTINGS ============ */
+const DATAPIPE_ID='';        // DataPipe experiment ID for this study. Empty = nothing is saved (pilot mode). Set ONLY after IRB approval.
+const COMPLETION_URL='';     // Prolific completion link
+const SCREENOUT_URL='';      // Prolific link for people who fail the headphone check (optional)
+const VERSION='between-semitones-v1';
+const REPS=3;                // repetitions of each same/different item per timbre block (3 gives 108 trials per block)
+/* ======================================== */
+/* Design
+   Question: do lay listeners show a discrimination peak along a minor-to-major third continuum (hidden Western interval
+   categories), and does that profile change when the tones have stretched (inharmonic) partials?
+   Stimuli: melodic intervals of 300-400 cents in 10-cent steps. Each trial plays two intervals (A then X) on different
+   roots (roving, so listeners must compare interval size, not absolute pitch) and asks: same interval or different?
+   Pairs: neighbours 20 cents apart (300/320 ... 380/400), 9 pairs. Per pair and block: 'different' trials in both orders
+   and 'same' trials built from each member, REPS times each. Plus 4 easy catch trials (300 vs 400) per block.
+   Timbre (within participants, block order counterbalanced at random): harmonic complex tone (partials n*f0) vs
+   stretched complex tone (partials f0*n^STRETCH_EXP, i.e. octave stretched to 2.2:1). Interval size is always defined by f0.
+   Headphone screen: Woods et al. (2017) antiphase loudness task, 6 trials, pass = 5 or more correct.
+   Main outcome: d' per pair and timbre (log-linear correction), computed per participant from 'different' (hits) and
+   'same' (false alarms) trials. Category account predicts a peak near 340-360 cents for harmonic tones. */
+
+const CONT=[300,310,320,330,340,350,360,370,380,390,400];
+const PAIRS=CONT.slice(0,-2).map((c,i)=>[c,CONT[i+2]]);       // 20-cent neighbours
+const TIMBRES=['harmonic','stretched'];
+const N_PARTIALS=8, STRETCH_EXP=Math.log2(2.2);
+const TONE_MS=450, NOTE_GAP_MS=50, INTERVAL_GAP_MS=700, RAMP_MS=15, ITI_MS=500;
+const ROOT_LO=196, ROOT_HI=311;                // G3 to about E-flat 4
+const ROVE_MIN=150, ROVE_MAX=400;             // cents between the roots of A and X
+const LEVEL=0.18;
+
+const card=document.getElementById('card'),chip=document.getElementById('chip');
+const RESEARCHER=(()=>{try{return location.hash==='#researcher';}catch(e){return false;}})();
+const params=(()=>{try{return new URLSearchParams(location.search);}catch(e){return new URLSearchParams();}})();
+const PID=params.get('PROLIFIC_PID')||'test-'+Math.random().toString(36).slice(2,8);
+const STUDY_ID=params.get('STUDY_ID')||'',SESSION_ID=params.get('SESSION_ID')||Math.random().toString(36).slice(2,10);
+const QUICK=RESEARCHER&&params.get('quick')==='1';   // researcher test run: 6 trials per block (open ?quick=1#researcher)
+if(!DATAPIPE_ID)document.getElementById('footNote').textContent='Pilot preview: no data is saved. Please use headphones in a quiet room.';
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+const rand=(a,b)=>a+Math.random()*(b-a);
+const r3=v=>v==null?null:Math.round(v*1000)/1000;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+/* ---------- audio ---------- */
+let ac=null;
+function audio(){if(!ac){const AC=window.AudioContext||window.webkitAudioContext;ac=new AC();}if(ac.state==='suspended')ac.resume();return ac;}
+function partials(timbre){const out=[];for(let n=1;n<=N_PARTIALS;n++)out.push({ratio:timbre==='stretched'?Math.pow(n,STRETCH_EXP):n,amp:1/n});
+  const s=out.reduce((a,p)=>a+p.amp,0);out.forEach(p=>p.amp/=s);return out;}
+function scheduleTone(t0,f0,timbre,ms,gain=LEVEL){
+  const a=audio(),dur=ms/1000,r=RAMP_MS/1000,g=a.createGain();
+  g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(gain,t0+r);g.gain.setValueAtTime(gain,t0+dur-r);g.gain.linearRampToValueAtTime(0,t0+dur);
+  g.connect(a.destination);
+  for(const p of partials(timbre)){const f=f0*p.ratio;if(f>a.sampleRate/2-500)continue;
+    const o=a.createOscillator(),pg=a.createGain();o.frequency.value=f;pg.gain.value=p.amp;o.connect(pg);pg.connect(g);o.start(t0);o.stop(t0+dur+.02);}
+}
+// one trial: interval A (two notes) then interval X; returns time-points for the lights
+function scheduleTrial(tr){
+  const a=audio(),t0=a.currentTime+.15,T=TONE_MS/1000,G=NOTE_GAP_MS/1000,IG=INTERVAL_GAP_MS/1000;
+  const fA2=tr.rootA*Math.pow(2,tr.centsA/1200),fX2=tr.rootX*Math.pow(2,tr.centsX/1200);
+  scheduleTone(t0,tr.rootA,tr.timbre,TONE_MS);scheduleTone(t0+T+G,fA2,tr.timbre,TONE_MS);
+  const tX=t0+2*T+G+IG;scheduleTone(tX,tr.rootX,tr.timbre,TONE_MS);scheduleTone(tX+T+G,fX2,tr.timbre,TONE_MS);
+  return {startA:(t0-a.currentTime)*1000,startX:(tX-a.currentTime)*1000,end:(tX+2*T+G-a.currentTime)*1000};
+}
+// Woods et al. (2017) antiphase tone: 200 Hz pure tone, 1 s; antiphase = right channel inverted
+function scheduleCheckTone(t0,kind){
+  const a=audio(),dur=1,r=.1,gain=kind==='quiet'?LEVEL*0.5:LEVEL;   // -6 dB for the target
+  const o=a.createOscillator();o.frequency.value=200;
+  const gL=a.createGain(),gR=a.createGain(),m=a.createChannelMerger(2),env=a.createGain();
+  env.gain.setValueAtTime(0,t0);env.gain.linearRampToValueAtTime(gain,t0+r);env.gain.setValueAtTime(gain,t0+dur-r);env.gain.linearRampToValueAtTime(0,t0+dur);
+  gL.gain.value=1;gR.gain.value=kind==='anti'?-1:1;
+  o.connect(env);env.connect(gL);env.connect(gR);gL.connect(m,0,0);gR.connect(m,0,1);m.connect(a.destination);o.start(t0);o.stop(t0+dur+.02);
+}
+
+/* ---------- trial lists ---------- */
+function makeBlock(timbre,block){
+  const items=[];
+  for(const [lo,hi] of PAIRS)for(let r=0;r<REPS;r++){
+    items.push({type:'different',pair:lo+'-'+hi,centsA:lo,centsX:hi},{type:'different',pair:lo+'-'+hi,centsA:hi,centsX:lo},
+               {type:'same',pair:lo+'-'+hi,centsA:lo,centsX:lo},{type:'same',pair:lo+'-'+hi,centsA:hi,centsX:hi});
+  }
+  for(let k=0;k<4;k++)items.push(k%2?{type:'catch',pair:'300-400',centsA:300,centsX:400}:{type:'catch',pair:'300-400',centsA:400,centsX:300});
+  shuffle(items);
+  return items.map((it,i)=>addRoots({...it,timbre,block,block_trial:i+1}));
+}
+function addRoots(it){
+  const rootA=Math.exp(rand(Math.log(ROOT_LO),Math.log(ROOT_HI)));
+  let rove=rand(ROVE_MIN,ROVE_MAX)*(Math.random()<.5?-1:1),rootX=rootA*Math.pow(2,rove/1200);
+  if(rootX<ROOT_LO*0.84||rootX>ROOT_HI*1.19){rove=-rove;rootX=rootA*Math.pow(2,rove/1200);}
+  return {...it,rootA,rootX,rove_cents:rove};
+}
+const PRACTICE=[[300,400],[350,350],[400,300],[320,320],[300,380],[360,360]].map(([a,x],i)=>addRoots({type:a===x?'same':'different',pair:'practice',centsA:a,centsX:x,timbre:'harmonic',block:0,block_trial:i+1,practice:true}));
+
+/* ---------- state ---------- */
+let order,blocks,rows,checkRows,quest,saveResult,lastData,startedAt,hiddenCount,headphonePass,checkAttempts;
+document.addEventListener('visibilitychange',()=>{if(document.hidden)hiddenCount++;});
+
+function show(html){card.innerHTML=html;}
+function button(id,label,cls){return '<button id="'+id+'" class="'+(cls||'')+'">'+label+'</button>';}
+function on(id,fn){const el=document.getElementById(id);if(el)el.onclick=fn;}
+
+/* ---------- flow ---------- */
+function newRun(){
+  order=shuffle([...TIMBRES]);blocks=order.map((t,i)=>makeBlock(t,i+1));if(QUICK)blocks=blocks.map(b=>b.slice(0,6));rows=[];checkRows=[];quest={};saveResult='not saved';lastData=null;hiddenCount=0;headphonePass=null;checkAttempts=0;
+  document.getElementById('research').hidden=true;chip.textContent='Welcome';
+  const touchOnly=(()=>{try{return matchMedia('(pointer:coarse)').matches&&!matchMedia('(any-pointer:fine)').matches;}catch(e){return false;}})();
+  show('<h2>How do we hear musical intervals?</h2><p>You will hear short pairs of musical notes and decide whether two of them sound the same or different. No musical training is needed. About 20 minutes.</p>'+
+    '<p><b>You need headphones</b> (not laptop or phone speakers) and a quiet place.</p>'+
+    (touchOnly?'<p class="small"><b>This study works best on a computer.</b></p>':'')+
+    '<p class="small">Consent placeholder: your IRB-approved consent text goes here, before anything starts.</p>'+
+    '<div class="row">'+button('go','I agree, continue')+'</div>');
+  on('go',()=>{audio();startedAt=new Date().toISOString();volume();});
+}
+function volume(){
+  chip.textContent='Set up';
+  show('<h2>Set your volume</h2><p>Put on your headphones. Press play and set your computer volume so the notes are clear and comfortable, not loud.</p>'+
+    '<div class="row">'+button('play','Play notes','secondary')+button('next','The volume is comfortable')+'</div>');
+  on('play',()=>{const a=audio(),t=a.currentTime+.1;[0,350,700].forEach((c,i)=>scheduleTone(t+i*.5,262*Math.pow(2,c/1200),'harmonic',TONE_MS));});
+  on('next',()=>headphoneIntro());
+}
+function headphoneIntro(){
+  checkAttempts++;
+  show('<h2>Headphone check</h2><p>You will hear three tones. Pick the one that is <b>quietest</b>. There are 6 short rounds.</p><p class="small">Keep your volume where you set it.</p>'+
+    '<div class="row">'+button('go','Start')+'</div>');
+  on('go',()=>runCheck());
+}
+async function runCheck(){
+  let correct=0;
+  for(let i=0;i<6;i++){
+    const kinds=shuffle(['quiet','anti','normal']);
+    show('<h2>Which tone was quietest?</h2><p class="small">Round '+(i+1)+' of 6</p><div class="lights">'+[1,2,3].map(k=>'<div class="light" id="L'+k+'">'+k+'</div>').join('')+'</div>'+
+      '<div class="row" style="justify-content:center">'+[1,2,3].map(k=>button('b'+k,'Tone '+k,'secondary')).join('')+'</div>');
+    [1,2,3].forEach(k=>document.getElementById('b'+k).disabled=true);
+    const a=audio(),t0=a.currentTime+.2;kinds.forEach((k,j)=>scheduleCheckTone(t0+j*1.5,k));
+    for(let j=0;j<3;j++){setTimeout(()=>document.getElementById('L'+(j+1))?.classList.add('on'),200+j*1500);setTimeout(()=>document.getElementById('L'+(j+1))?.classList.remove('on'),1200+j*1500);}
+    await sleep(200+3*1500);
+    [1,2,3].forEach(k=>document.getElementById('b'+k).disabled=false);
+    const t1=performance.now();
+    const choice=await new Promise(res=>[1,2,3].forEach(k=>on('b'+k,()=>res(k))));
+    const ok=kinds[choice-1]==='quiet';if(ok)correct++;
+    checkRows.push({attempt:checkAttempts,round:i+1,order:kinds.join('|'),choice,correct:ok,rt_ms:Math.round(performance.now()-t1)});
+  }
+  headphonePass=correct>=5;
+  if(headphonePass)return instructions();
+  if(checkAttempts<2){show('<h2>Let\'s try that once more</h2><p>That check is designed to be easy with headphones and hard with speakers. Please make sure you are wearing headphones, then try again.</p><div class="row">'+button('go','Try again')+'</div>');on('go',headphoneIntro);return;}
+  show('<h2>Thank you</h2><p>This study needs headphones, and the check suggests they may not be working as needed. Unfortunately you cannot continue.</p>'+(RESEARCHER?'<div class="row">'+button('skip','Researcher: continue anyway','secondary')+'</div>':''));
+  on('skip',instructions);
+  if(SCREENOUT_URL&&!RESEARCHER){await saveData(buildData('screened_out'));setTimeout(()=>location.href=SCREENOUT_URL,3000);}
+}
+function instructions(){
+  chip.textContent='Practice';
+  show('<h2>The task</h2><p>Each round plays two short <b>note pairs</b>, one after the other. The second pair always starts on a different note, so the pairs will sound higher or lower. Ignore that.</p>'+
+    '<p>Your job: is the <b>jump</b> between the two notes the same size in both pairs, or different?</p><p>Some differences are very small. If you are not sure, just give your best guess.</p>'+
+    '<p class="small">Answer with the buttons, or press <b>F</b> for Same and <b>J</b> for Different.</p><div class="row">'+button('go','Start practice')+'</div>');
+  on('go',async()=>{for(const tr of PRACTICE)await runTrial(tr,true);mainIntro(0);});
+}
+function mainIntro(b){
+  chip.textContent='Part '+(b+1)+' of 2';
+  show('<h2>'+(b===0?'Practice done. Now the real rounds.':'Part 2')+'</h2><p>'+(b===0?'From now on there is no feedback. ':'The notes will sound a bit different in this part, but the task is the same. ')+
+    'This part has '+blocks[b].length+' rounds and a short break halfway.</p><div class="row">'+button('go','Start')+'</div>');
+  on('go',async()=>{const bl=blocks[b];
+    for(let i=0;i<bl.length;i++){
+      if(i===Math.floor(bl.length/2)){show('<h2>Short break</h2><p>Take a breath. Continue when you are ready.</p><div class="row">'+button('go','Continue')+'</div>');await new Promise(r=>on('go',r));}
+      await runTrial(bl[i],false,(i+1)/bl.length);
+    }
+    if(b===0)mainIntro(1);else questions();});
+}
+function runTrial(tr,practice,progress){
+  return new Promise(async resolve=>{
+    show('<div class="center"><p class="small">'+(practice?'Practice '+tr.block_trial+' of '+PRACTICE.length:'Listen')+'</p>'+
+      '<div class="lights"><div class="light" id="LA">1st</div><div class="light" id="LX">2nd</div></div>'+
+      '<div class="row" style="justify-content:center">'+button('same','Same (F)','big secondary')+button('diff','Different (J)','big secondary')+'</div>'+
+      '<div class="fb" id="fb"></div>'+(practice?'':'<div class="bar"><div id="prog"></div></div>')+'</div>');
+    const pg=document.getElementById('prog');if(pg)pg.style.width=Math.round((progress||0)*100)+'%';
+    const bS=document.getElementById('same'),bD=document.getElementById('diff');bS.disabled=bD.disabled=true;
+    const tm=scheduleTrial(tr),dur=2*TONE_MS+NOTE_GAP_MS;
+    setTimeout(()=>document.getElementById('LA')?.classList.add('on'),tm.startA);setTimeout(()=>document.getElementById('LA')?.classList.remove('on'),tm.startA+dur);
+    setTimeout(()=>document.getElementById('LX')?.classList.add('on'),tm.startX);setTimeout(()=>document.getElementById('LX')?.classList.remove('on'),tm.startX+dur);
+    await sleep(tm.end+30);
+    bS.disabled=bD.disabled=false;const t1=performance.now();let done=false;
+    const answer=async resp=>{if(done)return;done=true;document.removeEventListener('keydown',key);
+      const rt=Math.round(performance.now()-t1),correct=(resp==='different')===(tr.type!=='same');
+      rows.push({practice:!!practice,block:tr.block,block_trial:tr.block_trial,timbre:tr.timbre,type:tr.type,pair:tr.pair,cents_a:tr.centsA,cents_x:tr.centsX,
+        root_a_hz:r3(tr.rootA),root_x_hz:r3(tr.rootX),rove_cents:r3(tr.rove_cents),response:resp,correct,rt_ms:rt});
+      bS.disabled=bD.disabled=true;
+      if(practice){const fb=document.getElementById('fb');fb.className='fb '+(correct?'good':'bad');
+        fb.textContent=(correct?'Correct. ':'Not quite. ')+(tr.type==='same'?'The jumps were the same size.':'The jumps were different sizes.');await sleep(1600);}
+      await sleep(ITI_MS);resolve();};
+    const key=e=>{if(e.key==='f'||e.key==='F')answer('same');else if(e.key==='j'||e.key==='J')answer('different');};
+    document.addEventListener('keydown',key);bS.onclick=()=>answer('same');bD.onclick=()=>answer('different');
+  });
+}
+function questions(){
+  chip.textContent='Almost done';
+  const radio=(name,opts)=>'<div class="opts">'+opts.map(t=>'<label><input type="radio" name="'+name+'" value="'+t+'"> '+t+'</label>').join('')+'</div>';
+  show('<h2>A few questions about you</h2>'+
+    '<label for="age">Age</label><input type="number" id="age" min="18" max="100">'+
+    '<label>Years of formal music training (lessons, ensembles, school music)</label>'+radio('train',['None','Less than 2','2–5','6–10','More than 10'])+
+    '<label>Do you currently play an instrument or sing regularly?</label>'+radio('play',['Yes','No'])+
+    '<label for="lang">What language(s) did you grow up speaking?</label><input type="text" id="lang">'+
+    '<label>Do you speak a tone language (for example Mandarin, Cantonese, Vietnamese, Thai, Yoruba)?</label>'+radio('tone',['Yes, natively','Yes, learned later','No'])+
+    '<label>Have you regularly listened to music from Arabic, Turkish, Persian, Indian or Indonesian traditions?</label>'+radio('world',['Often','Sometimes','Rarely or never'])+
+    '<label>What did you listen with?</label>'+radio('hp',['Over-ear headphones','In-ear headphones or earbuds','Speakers'])+
+    '<label>Do you have any known hearing difficulties?</label>'+radio('hear',['No','Yes','Prefer not to say'])+
+    '<label>How focused were you during the task?</label>'+radio('focus',['Fully','Mostly','Somewhat distracted','Very distracted'])+
+    '<label for="strat">Did you use any strategy to tell the jumps apart? (optional)</label><textarea id="strat"></textarea>'+
+    '<div class="err" id="qerr"></div><div class="row">'+button('go','Continue')+'</div>');
+  on('go',()=>{const v=n=>(document.querySelector('input[name='+n+']:checked')||{}).value;
+    const need=['train','play','tone','world','hp','hear','focus'];
+    if(need.some(n=>!v(n))){document.getElementById('qerr').textContent='Please answer all the multiple-choice questions.';return;}
+    quest={age:document.getElementById('age').value,music_training:v('train'),plays_now:v('play'),languages:document.getElementById('lang').value.trim(),
+      tone_language:v('tone'),non_western_listening:v('world'),listening_device:v('hp'),hearing_difficulty:v('hear'),focus:v('focus'),strategy:document.getElementById('strat').value.trim()};
+    saveAndDebrief();});
+}
+
+/* ---------- scoring ---------- */
+const zinv=p=>{ // inverse normal CDF (Acklam)
+  const a=[-39.69683028665376,220.9460984245205,-275.9285104469687,138.3577518672690,-30.66479806614716,2.506628277459239],
+        b=[-54.47609879822406,161.5858368580409,-155.6989798598866,66.80131188771972,-13.28068155288572],
+        c=[-0.007784894002430293,-0.3223964580411365,-2.400758277161838,-2.549732539343734,4.374664141464968,2.938163982698783],
+        d=[0.007784695709041462,0.3224671290700398,2.445134137142996,3.754408661907416],pl=.02425;
+  let q,r;if(p<pl){q=Math.sqrt(-2*Math.log(p));return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);}
+  if(p>1-pl){q=Math.sqrt(-2*Math.log(1-p));return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);}
+  q=p-.5;r=q*q;return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q/(((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);};
+function dprime(rs){ // rs: main trials for one pair and timbre; log-linear correction (Hautus, 1995)
+  const D=rs.filter(r=>r.type==='different'),S=rs.filter(r=>r.type==='same');
+  const H=(D.filter(r=>r.response==='different').length+.5)/(D.length+1),F=(S.filter(r=>r.response==='different').length+.5)/(S.length+1);
+  return {d:zinv(H)-zinv(F),hit:H,fa:F,nD:D.length,nS:S.length};}
+function summary(){
+  const main=rows.filter(r=>!r.practice),out=[];
+  for(const t of TIMBRES)for(const [lo,hi] of PAIRS){const s=dprime(main.filter(r=>r.timbre===t&&r.pair===lo+'-'+hi));out.push({timbre:t,pair:lo+'-'+hi,midpoint:(lo+hi)/2,d_prime:r3(s.d),hit_rate:r3(s.hit),fa_rate:r3(s.fa),n_diff:s.nD,n_same:s.nS});}
+  const cat=main.filter(r=>r.type==='catch');
+  return {by_pair:out,catch_accuracy:cat.length?r3(cat.filter(r=>r.correct).length/cat.length):null,overall_accuracy:main.length?r3(main.filter(r=>r.correct).length/main.length):null};
+}
+
+/* ---------- saving, debrief ---------- */
+function buildData(status){
+  return {version:VERSION,status:status||'complete',prolific_pid:PID,study_id:STUDY_ID,session_id:SESSION_ID,started_at:startedAt,finished_at:new Date().toISOString(),
+    block_order:order,headphone_check:{passed:headphonePass,attempts:checkAttempts,rounds:checkRows},questionnaire:quest,tab_switches:hiddenCount,
+    audio:{sample_rate:ac?ac.sampleRate:null,partials:N_PARTIALS,stretch_exponent:r3(STRETCH_EXP),tone_ms:TONE_MS,note_gap_ms:NOTE_GAP_MS,interval_gap_ms:INTERVAL_GAP_MS},
+    user_agent:navigator.userAgent,summary:summary(),trials:rows};
+}
+async function saveData(data){
+  if(!DATAPIPE_ID)return 'skipped (pilot mode, no DataPipe ID set)';
+  for(let attempt=1;attempt<=3;attempt++){
+    try{const r=await fetch('https://pipe.jspsych.org/api/data/',{method:'POST',headers:{'Content-Type':'application/json',Accept:'*/*'},
+        body:JSON.stringify({experimentID:DATAPIPE_ID,filename:PID+'_'+SESSION_ID+'.json',data:JSON.stringify(data)})});
+      if(r.ok)return 'saved';}catch(e){}
+    await sleep(1500*attempt);
+  }
+  return 'failed';
+}
+async function saveAndDebrief(){
+  show('<h2>Saving your responses…</h2><p class="small">Please keep this page open.</p>');
+  lastData=buildData();saveResult=await saveData(lastData);
+  if(saveResult==='failed'){show('<h2>We couldn\'t save your responses</h2><p>Please check your internet connection and try again.</p><div class="row">'+button('go','Try again')+'</div>');on('go',saveAndDebrief);return;}
+  chip.textContent='All done';
+  show('<h2>All done. Thank you!</h2><p><b>What this study is about:</b> Western music divides the octave into 12 equal steps, but many musical traditions use intervals that fall between those steps. The jumps you heard ranged from a "minor third" to a "major third" in very small steps. We are testing whether people who have grown up with Western music hear these in-between intervals as one of the two familiar categories, and whether that changes when the notes have an unusual, bell-like sound.</p>'+
+    '<p>If you have questions or want your data removed, contact the research team.</p><div class="row">'+button('fin',RESEARCHER?'See researcher view':'Finish')+'</div>');
+  on('fin',RESEARCHER?showResearch:finishStudy);
+}
+function finishStudy(){if(COMPLETION_URL){location.href=COMPLETION_URL;return;}show('<h2>Thank you!</h2><p>You have finished the study. You can close this tab.</p>');}
+
+/* ---------- researcher view ---------- */
+function showResearch(){
+  const sec=document.getElementById('research');sec.hidden=false;
+  document.getElementById('saveStatus').textContent='Data file: '+saveResult+'. Participants never see this view. One person\'s d′ per pair rests on few trials, so expect noise.';
+  const s=summary(),main=rows.filter(r=>!r.practice);
+  document.getElementById('stats').innerHTML=[[main.length,'Main trials'],[s.catch_accuracy==null?'n/a':Math.round(s.catch_accuracy*100)+'%','Catch-trial accuracy (300 vs 400)'],
+    [headphonePass==null?'n/a':(headphonePass?'Passed':'Failed'),'Headphone check'],[order.join(' → '),'Block order']]
+    .map(x=>'<div class="stat"><div class="n">'+x[0]+'</div><div class="l">'+x[1]+'</div></div>').join('');
+  document.getElementById('pairTable').innerHTML='<tr><th>Pair (cents)</th>'+TIMBRES.map(t=>'<th>'+t+' d′</th><th>hits / FAs</th>').join('')+'</tr>'+
+    PAIRS.map(([lo,hi])=>'<tr><td>'+lo+'–'+hi+'</td>'+TIMBRES.map(t=>{const p=s.by_pair.find(x=>x.timbre===t&&x.pair===lo+'-'+hi);return '<td>'+p.d_prime.toFixed(2)+'</td><td>'+p.hit_rate.toFixed(2)+' / '+p.fa_rate.toFixed(2)+'</td>';}).join('')+'</tr>').join('');
+  // plot
+  const cv=document.getElementById('dprime'),x=cv.getContext('2d'),W=cv.width,H=cv.height,L=50,R=20,T=20,B=40;x.clearRect(0,0,W,H);
+  const ys=s.by_pair.map(p=>p.d_prime),ymin=Math.min(-0.5,...ys),ymax=Math.max(2.5,...ys);
+  const X=m=>L+(m-310)/(390-310)*(W-L-R),Y=v=>T+(ymax-v)/(ymax-ymin)*(H-T-B);
+  x.strokeStyle='#e2ddd3';x.fillStyle='#6f6b64';x.font='12px system-ui';x.lineWidth=1;
+  for(let v=Math.ceil(ymin);v<=ymax;v++){x.beginPath();x.moveTo(L,Y(v));x.lineTo(W-R,Y(v));x.stroke();x.fillText(v,L-22,Y(v)+4);}
+  PAIRS.forEach(([lo,hi])=>x.fillText((lo+hi)/2,X((lo+hi)/2)-10,H-B+18));x.fillText('pair midpoint (cents)',W/2-55,H-6);
+  x.save();x.translate(14,H/2+12);x.rotate(-Math.PI/2);x.fillText('d′',0,0);x.restore();
+  const col={harmonic:'#2a78c2',stretched:'#d9822b'};
+  for(const t of TIMBRES){const pts=s.by_pair.filter(p=>p.timbre===t);x.strokeStyle=col[t];x.fillStyle=col[t];x.lineWidth=2.5;x.beginPath();
+    pts.forEach((p,i)=>i?x.lineTo(X(p.midpoint),Y(p.d_prime)):x.moveTo(X(p.midpoint),Y(p.d_prime)));x.stroke();
+    pts.forEach(p=>{x.beginPath();x.arc(X(p.midpoint),Y(p.d_prime),4,0,6.3);x.fill();});}
+  TIMBRES.forEach((t,i)=>{x.fillStyle=col[t];x.fillRect(W-R-110,T+6+i*18,12,12);x.fillStyle='#2b2a28';x.fillText(t,W-R-92,T+16+i*18);});
+  sec.scrollIntoView({behavior:'smooth'});
+}
+function toCSV(list){if(!list.length)return '';const keys=[...new Set(list.flatMap(o=>Object.keys(o)))];return [keys.join(',')].concat(list.map(r=>keys.map(c=>JSON.stringify(r[c]??'')).join(','))).join('\n');}
+async function copy(txt,label){const msg=document.getElementById('copyMsg'),ta=document.getElementById('csvOut');
+  try{await navigator.clipboard.writeText(txt);msg.textContent=label+' copied.';ta.hidden=true;}
+  catch(e){ta.hidden=false;ta.value=txt;ta.select();msg.textContent='Copying was blocked, so it is shown below. Select it and copy.';}}
+document.getElementById('copyJson').onclick=()=>copy(JSON.stringify(lastData||buildData(),null,1),'Full data file');
+document.getElementById('copyTrials').onclick=()=>copy(toCSV(rows),'Trials CSV');
+document.getElementById('restart').onclick=()=>{window.scrollTo({top:0,behavior:'smooth'});newRun();};
+
+// exposed for automated checks only (no effect on participants)
+window.__BS={makeBlock,dprime,summary,PAIRS,partials,CONT,setRows:r=>{rows=r;}};
+newRun();
+})();
+</script>
+</body>
+</html>
