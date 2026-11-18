@@ -231,7 +231,7 @@ function instructions(){
   chip.textContent='Practice';
   show('<h2>The task</h2><p>Each round plays two short <b>note pairs</b>, one after the other. The second pair always starts on a different note, so the pairs will sound higher or lower. Ignore that.</p>'+
     '<p>Your job: is the <b>jump</b> between the two notes the same size in both pairs, or different?</p><p>Some differences are very small. If you are not sure, just give your best guess.</p>'+
-    '<p class="small">Answer with the buttons, or press <b>F</b> for Same and <b>J</b> for Different.</p><div class="row">'+button('go','Start practice')+'</div>');
+    '<p class="small">Answer with the buttons, or press <b>S</b> for Same and <b>J</b> for Different.</p><div class="row">'+button('go','Start practice')+'</div>');
   on('go',async()=>{for(const tr of PRACTICE)await runTrial(tr,true);mainIntro(0);});
 }
 function mainIntro(b){
@@ -249,7 +249,7 @@ function runTrial(tr,practice,progress){
   return new Promise(async resolve=>{
     show('<div class="center"><p class="small">'+(practice?'Practice '+tr.block_trial+' of '+PRACTICE.length:'Listen')+'</p>'+
       '<div class="lights"><div class="light" id="LA">1st</div><div class="light" id="LX">2nd</div></div>'+
-      '<div class="row" style="justify-content:center">'+button('same','Same (F)','big secondary')+button('diff','Different (J)','big secondary')+'</div>'+
+      '<div class="row" style="justify-content:center">'+button('same','Same (S)','big secondary')+button('diff','Different (J)','big secondary')+'</div>'+
       '<div class="fb" id="fb"></div>'+(practice?'':'<div class="bar"><div id="prog"></div></div>')+'</div>');
     const pg=document.getElementById('prog');if(pg)pg.style.width=Math.round((progress||0)*100)+'%';
     const bS=document.getElementById('same'),bD=document.getElementById('diff');bS.disabled=bD.disabled=true;
@@ -266,7 +266,7 @@ function runTrial(tr,practice,progress){
       if(practice){const fb=document.getElementById('fb');fb.className='fb '+(correct?'good':'bad');
         fb.textContent=(correct?'Correct. ':'Not quite. ')+(tr.type==='same'?'The jumps were the same size.':'The jumps were different sizes.');await sleep(1600);}
       await sleep(ITI_MS);resolve();};
-    const key=e=>{if(e.key==='f'||e.key==='F')answer('same');else if(e.key==='j'||e.key==='J')answer('different');};
+    const key=e=>{if(e.key==='s'||e.key==='S')answer('same');else if(e.key==='j'||e.key==='J')answer('different');};
     document.addEventListener('keydown',key);bS.onclick=()=>answer('same');bD.onclick=()=>answer('different');
   });
 }
