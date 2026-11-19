@@ -59,7 +59,8 @@
   <div class="home">
     <header class="header-home animated">
       <a href="about.html"><img class="selfie" src="IMG_8999.png" alt="Nelu D. Radpour" /></a>
-               <h1 class="title">Nelu Radpour</h1>
+               <h1 class="title"><span class="say-name" tabindex="0">Nelu<button type="button" class="say-pop" aria-label="Play pronunciation of Nelu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4z"/></svg>how to say it</button></span> Radpour</h1>
+      <audio id="nelu-audio" src="nelu.mp3" preload="none"></audio>
       <div class="tagline">
               <p class="phd">PhD Candidate, Cognition &amp; Cognitive Neuroscience</p>
         <p class="lab">
@@ -99,5 +100,14 @@
 <script>document.getElementById('yr').textContent = new Date().getFullYear();</script>
 <script src="sky.js"></script>
 <script src="bg-pixels.js"></script>
+<script>
+  (function () {
+    var name = document.querySelector('.say-name'), audio = document.getElementById('nelu-audio');
+    if (!name || !audio) return;
+    function play(e) { if (e) e.preventDefault(); audio.currentTime = 0; audio.play(); }
+    name.addEventListener('click', play);
+    name.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') play(e); });
+  })();
+</script>
 </body>
 </html>

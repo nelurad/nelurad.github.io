@@ -91,6 +91,29 @@ ul li { line-height: 2.4rem; font-weight: var(--thin); }
 }
 .selfie:hover { box-shadow: 0 0 4px rgba(0,0,0,.18), 0 0 12px rgba(0,0,0,.15); opacity: .8; }
 .header-home .title { font-size: 4rem; margin: 0 0 13px; }
+
+/* ---------- "How to say it" popup on the name ---------- */
+.say-name { position: relative; display: inline-block; cursor: pointer; outline: none; }
+.say-name::after {               /* invisible bridge so the popup stays open while moving the mouse to it */
+  content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 12px;
+}
+.say-pop {
+  position: absolute; left: 50%; top: calc(100% + 8px);
+  transform: translate(-50%, -4px);
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px;
+  background: var(--bg); color: var(--text);
+  font: 400 1.3rem "Helvetica Neue", Helvetica, Arial, sans-serif;
+  white-space: nowrap; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .12);
+  opacity: 0; visibility: hidden; transition: opacity .15s, transform .15s, visibility .15s;
+  z-index: 5;
+}
+.say-pop svg { width: 15px; height: 15px; fill: var(--accent); }
+.say-pop:hover { color: var(--heading); }
+.say-name:hover .say-pop, .say-name:focus-within .say-pop {
+  opacity: 1; visibility: visible; transform: translate(-50%, 0);
+}
 .header-home .description {
   font-size: 1.85rem; font-weight: var(--thin); color: var(--muted);
   width: 80%; margin: 0 auto 30px;
